@@ -25,6 +25,10 @@ void ESPCD::setup() {
     }
 }
 
+WebServer& ESPCD::get_server() {
+    return Portal.host();
+}
+
 void ESPCD::loop() {
     // Serial.println("Hello from loop");
 
