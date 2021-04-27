@@ -7,6 +7,11 @@
 #include <ESP8266WebServer.h>
 #endif
 
+#define IDENTIFIER "ESPCD"
+#define VERSION_KEY "version"
+#define VERSION_CHECK_INTERVAL 5000
+#define DEFAULT_VERSION ""
+
 class ESPCD {
   public:
     ESPCD(String url);
@@ -20,7 +25,11 @@ class ESPCD {
   private:
     String url;
     char id[13];
-    void generate_id();
+    void generateId();
+    void setLocalVersion(String version);
+    String getLocalVersion();
+    String getRemoteVersion();
+    void update();
 };
 
 #endif
