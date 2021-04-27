@@ -12,8 +12,15 @@
 AutoConnect Portal;
 AutoConnectConfig Config;
 
-ESPCD::ESPCD(char* url) {
+ESPCD::ESPCD(String url) {
     this->url = url;
+    generate_id();
+}
+
+void ESPCD::generate_id() {
+    uint64_t chipid = ESP.getEfuseMac();
+    uint16_t chip = (uint16_t)(chipid >> 32);
+    snprintf(this->id, 13, "%04X%08X", chip, (uint32_t)chipid);
 }
 
 void ESPCD::setup() {
@@ -41,16 +48,15 @@ ESP8266WebServer& ESPCD::get_server() {
 #endif
 
 void ESPCD::loop() {
-    // Serial.println("Hello from loop");
-
     if (WiFi.status() == WL_CONNECTED) {
         WiFiClient client;
         client.setTimeout(12000 / 1000);
-    
+        
+        String url = this->url + "?device=" + this->id;
 #if defined(ARDUINO_ARCH_ESP32)
-        t_httpUpdate_return ret = httpUpdate.update(client, this->url);
+        t_httpUpdate_return ret = httpUpdate.update(client, url);
 #elif defined(ARDUINO_ARCH_ESP8266)
-        t_httpUpdate_return ret = ESPhttpUpdate.update(client, this->url);
+        t_httpUpdate_return ret = ESPhttpUpdate.update(client, url);
 #endif
         switch (ret) {
         case HTTP_UPDATE_FAILED:

@@ -9,7 +9,7 @@
 
 class ESPCD {
   public:
-    ESPCD(char* url);
+    ESPCD(String url);
     void setup();
     void loop();
 #if defined(ARDUINO_ARCH_ESP32)
@@ -18,7 +18,9 @@ class ESPCD {
     ESP8266WebServer& get_server();
 #endif
   private:
-    char* url;
+    String url;
+    char id[13];
+    void generate_id();
 };
 
 #endif
