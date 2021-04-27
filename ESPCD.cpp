@@ -12,22 +12,22 @@
 #endif
 #include <AutoConnect.h>
 
-AutoConnect Portal;
-AutoConnectConfig Config;
+AutoConnect portal;
+AutoConnectConfig config;
 
 #if defined(ARDUINO_ARCH_ESP32)
-Preferences preferences;
+Preferences pref;
 #elif defined(ARDUINO_ARCH_ESP8266)
 
 #endif
 
 long previousMillis = 0;
 
-ESPCD::ESPCD(String url) {
-    if (url.endsWith("/")) {
-        url = url.substring(0, url.length()-1);
+ESPCD::ESPCD(String baseUrl) {
+    if (baseUrl.endsWith("/")) {
+        baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
-    this->url = url;
+    this->baseUrl = baseUrl;
     generateId();
 }
 
@@ -39,9 +39,9 @@ void ESPCD::generateId() {
 
 void ESPCD::setLocalVersion(String version) {
     #if defined(ARDUINO_ARCH_ESP32)
-    preferences.begin(IDENTIFIER, false);
-    preferences.putString(VERSION_KEY, version);
-    preferences.end();
+    pref.begin(IDENTIFIER, false);
+    pref.putString(VERSION_KEY, version);
+    pref.end();
     #elif defined(ARDUINO_ARCH_ESP8266)
 
     #endif
@@ -49,9 +49,9 @@ void ESPCD::setLocalVersion(String version) {
 
 String ESPCD::getLocalVersion() {
     #if defined(ARDUINO_ARCH_ESP32)
-    preferences.begin(IDENTIFIER, false);
-    String version = preferences.getString(VERSION_KEY, DEFAULT_VERSION);
-    preferences.end();
+    pref.begin(IDENTIFIER, false);
+    String version = pref.getString(VERSION_KEY, DEFAULT_VERSION);
+    pref.end();
     #elif defined(ARDUINO_ARCH_ESP8266)
 
     #endif
@@ -59,7 +59,7 @@ String ESPCD::getLocalVersion() {
 }
 
 String ESPCD::getRemoteVersion() {
-    String url = this->url + "/version?device=" + this->id;
+    String url = this->baseUrl + "/version?device=" + this->id;
 
     String version = DEFAULT_VERSION;
     HTTPClient http;
@@ -72,7 +72,7 @@ String ESPCD::getRemoteVersion() {
 }
 
 void ESPCD::update() {
-    String url = this->url + "/firmware?device=" + this->id;
+    String url = this->baseUrl + "/firmware?device=" + this->id;
 
     WiFiClient client;
     client.setTimeout(12000 / 1000);
@@ -101,11 +101,11 @@ void ESPCD::update() {
 void ESPCD::setup() {
     Serial.println("Hello from setup");
 
-    Config.autoReconnect = true;
-    Config.reconnectInterval = 6;
-    Portal.config(Config);
+    config.autoReconnect = true;
+    config.reconnectInterval = 6;
+    portal.config(config);
     
-    if (Portal.begin()) {
+    if (portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
     } else {
         Serial.println("Connection failed.");
@@ -114,11 +114,11 @@ void ESPCD::setup() {
 
 #if defined(ARDUINO_ARCH_ESP32)
 WebServer& ESPCD::get_server() {
-    return Portal.host();
+    return portal.host();
 }
 #elif defined(ARDUINO_ARCH_ESP8266)
 ESP8266WebServer& ESPCD::get_server() {
-    return Portal.host();
+    return portal.host();
 }
 #endif
 
@@ -142,5 +142,5 @@ void ESPCD::loop() {
         }
     }
 
-    Portal.handleClient();
+    portal.handleClient();
 }

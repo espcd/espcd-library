@@ -14,7 +14,7 @@
 
 class ESPCD {
   public:
-    ESPCD(String url);
+    ESPCD(String baseUrl);
     void setup();
     void loop();
 #if defined(ARDUINO_ARCH_ESP32)
@@ -23,7 +23,7 @@ class ESPCD {
     ESP8266WebServer& get_server();
 #endif
   private:
-    String url;
+    String baseUrl;
     char id[13];
     void generateId();
     void setLocalVersion(String version);
