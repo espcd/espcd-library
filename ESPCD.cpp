@@ -106,6 +106,7 @@ String ESPCD::getRemoteVersion() {
     if (this->baseUrl.startsWith("https")) {
         WiFiClientSecure *client = new WiFiClientSecure;
         client->setCACert(rootCACert);
+        client->setTimeout(12);
         http.begin(*client, url);
     } else {
         http.begin(url);
@@ -122,12 +123,20 @@ String ESPCD::getRemoteVersion() {
 void ESPCD::update() {
     String url = this->baseUrl + "/firmware?device=" + this->id;
 
-    WiFiClient client;
-    client.setTimeout(12000 / 1000);
+    WiFiClient* client;
+    if (this->baseUrl.startsWith("https")) {
+        WiFiClientSecure* httpsClient = new WiFiClientSecure();
+        httpsClient->setCACert(rootCACert);
+        httpsClient->setTimeout(12);
+        client = httpsClient;
+    } else {
+        client = new WiFiClient();
+    }
+
 #if defined(ARDUINO_ARCH_ESP32)
-    t_httpUpdate_return ret = httpUpdate.update(client, url);
+    t_httpUpdate_return ret = httpUpdate.update(*client, url);
 #elif defined(ARDUINO_ARCH_ESP8266)
-    t_httpUpdate_return ret = ESPhttpUpdate.update(client, url);
+    t_httpUpdate_return ret = ESPhttpUpdate.update(*client, url);
 #endif
     switch (ret) {
     case HTTP_UPDATE_FAILED:
