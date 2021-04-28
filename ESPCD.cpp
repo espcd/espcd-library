@@ -11,7 +11,6 @@
 #include <ESP8266HTTPClient.h>
 #endif
 #include <AutoConnect.h>
-#include <WiFiClientSecure.h>
 
 AutoConnect portal;
 AutoConnectConfig config;
@@ -50,6 +49,7 @@ ESPCD::ESPCD(String baseUrl) {
         baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
     this->baseUrl = baseUrl;
+    this->secure = this->baseUrl.startsWith("https") ? true : false;
     generateId();
 }
 
@@ -99,14 +99,19 @@ String ESPCD::getLocalVersion() {
     return version;
 }
 
+WiFiClientSecure* ESPCD::getSecureClient() {
+    WiFiClientSecure* client = new WiFiClientSecure();
+    client->setCACert(rootCACert);
+    client->setTimeout(12);
+    return client;
+}
+
 String ESPCD::getRemoteVersion() {
     String url = this->baseUrl + "/version?device=" + this->id;
     
     HTTPClient http;
-    if (this->baseUrl.startsWith("https")) {
-        WiFiClientSecure *client = new WiFiClientSecure;
-        client->setCACert(rootCACert);
-        client->setTimeout(12);
+    if (this->secure) {
+        WiFiClientSecure* client = this->getSecureClient();
         http.begin(*client, url);
     } else {
         http.begin(url);
@@ -124,11 +129,8 @@ void ESPCD::update() {
     String url = this->baseUrl + "/firmware?device=" + this->id;
 
     WiFiClient* client;
-    if (this->baseUrl.startsWith("https")) {
-        WiFiClientSecure* httpsClient = new WiFiClientSecure();
-        httpsClient->setCACert(rootCACert);
-        httpsClient->setTimeout(12);
-        client = httpsClient;
+    if (this->secure) {
+        client = this->getSecureClient();
     } else {
         client = new WiFiClient();
     }
@@ -165,7 +167,7 @@ void ESPCD::setup() {
     if (portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
-        if (this->baseUrl.startsWith("https")) {
+        if (this->secure) {
             syncTime();
         }
     } else {

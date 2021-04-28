@@ -6,6 +6,7 @@
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266WebServer.h>
 #endif
+#include <WiFiClientSecure.h>
 
 #define IDENTIFIER "ESPCD"
 #define VERSION_KEY "version"
@@ -24,10 +25,12 @@ class ESPCD {
 #endif
   private:
     String baseUrl;
+    bool secure;
     char id[13];
     void generateId();
     void syncTime();
     void setLocalVersion(String version);
+    WiFiClientSecure* getSecureClient();
     String getLocalVersion();
     String getRemoteVersion();
     void update();
