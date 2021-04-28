@@ -18,14 +18,15 @@ class ESPCD {
     void setup();
     void loop();
 #if defined(ARDUINO_ARCH_ESP32)
-    WebServer& get_server();
+    WebServer& getServer();
 #elif defined(ARDUINO_ARCH_ESP8266)
-    ESP8266WebServer& get_server();
+    ESP8266WebServer& getServer();
 #endif
   private:
     String baseUrl;
     char id[13];
     void generateId();
+    void syncTime();
     void setLocalVersion(String version);
     String getLocalVersion();
     String getRemoteVersion();
