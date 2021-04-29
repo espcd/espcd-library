@@ -13,6 +13,7 @@
 #include <EEPROM.h>
 #endif
 #include <AutoConnect.h>
+#include <WiFiClientSecure.h>
 
 AutoConnect portal;
 AutoConnectConfig config;
@@ -37,10 +38,10 @@ ESPCD::ESPCD(String baseUrl) {
 }
 
 void ESPCD::generateId() {
-#ifdef ESP8266
-    sprintf_P(this->id, PSTR("%08x"), ESP.getChipId());
-#else
+#if defined(ARDUINO_ARCH_ESP32)
     sprintf_P(this->id, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+#elif defined(ARDUINO_ARCH_ESP8266)
+    sprintf_P(this->id, PSTR("%08x"), ESP.getChipId());
 #endif
 }
 
@@ -64,18 +65,18 @@ void ESPCD::syncTime() {
 }
 
 void ESPCD::setLocalVersion(String version) {
-    #if defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32)
     pref.begin(IDENTIFIER, false);
     pref.putString(VERSION_KEY, version);
     pref.end();
-    #elif defined(ARDUINO_ARCH_ESP8266)
+#elif defined(ARDUINO_ARCH_ESP8266)
     EEPROM_CONFIG_t eepromConfig;
     strncpy(eepromConfig.version, version.c_str(), sizeof(EEPROM_CONFIG_t::version));
     EEPROM.begin(portal.getEEPROMUsedSize());
     EEPROM.put<EEPROM_CONFIG_t>(0, eepromConfig);
     EEPROM.commit();
     EEPROM.end();
-    #endif
+#endif
 }
 
 String toString(char* c, uint8_t length) {
@@ -89,46 +90,56 @@ String toString(char* c, uint8_t length) {
 
 String ESPCD::getLocalVersion() {
     String version = DEFAULT_VERSION;
-    #if defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32)
     pref.begin(IDENTIFIER, false);
     version = pref.getString(VERSION_KEY, DEFAULT_VERSION);
     pref.end();
-    #elif defined(ARDUINO_ARCH_ESP8266)
+#elif defined(ARDUINO_ARCH_ESP8266)
     EEPROM_CONFIG_t eepromConfig;
     EEPROM.begin(sizeof(eepromConfig));
     EEPROM.get<EEPROM_CONFIG_t>(0, eepromConfig);
     EEPROM.end();
     version = toString(eepromConfig.version, sizeof(EEPROM_CONFIG_t::version));
-    #endif
+#endif
     return version;
 }
 
-WiFiClientSecure* ESPCD::getSecureClient() {
-    WiFiClientSecure* client = new WiFiClientSecure();
+std::unique_ptr<WiFiClient> ESPCD::getClient() {
+    std::unique_ptr<WiFiClient> client;
+    if (this->secure) {
+        std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
 #if defined(ARDUINO_ARCH_ESP32)
-    client->setCACert((const char *) certs_ca_pem);
+        secureClient->setCACert((const char *) certs_ca_pem);
 #elif defined(ARDUINO_ARCH_ESP8266)
-    client->setCACert(certs_ca_pem, certs_ca_pem_len);
+        secureClient->setCACert(certs_ca_pem, certs_ca_pem_len);
 #endif
-    client->setTimeout(12);
+        secureClient->setTimeout(12);
+        client = std::move(secureClient);
+    } else {
+        client = std::unique_ptr<WiFiClient>(new WiFiClient);
+    }
     return client;
 }
 
 String ESPCD::getRemoteVersion() {
     String url = this->baseUrl + "/version?device=" + this->id;
-    
-    HTTPClient http;
-    if (this->secure) {
-        WiFiClientSecure* client = this->getSecureClient();
-        http.begin(*client, url);
-    } else {
-        http.begin(url);
-    }
 
-    int httpCode = http.GET();
     String version = DEFAULT_VERSION;
-    if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        version = http.getString();
+    HTTPClient http;
+    std::unique_ptr<WiFiClient> client = this->getClient();
+    if (http.begin(*client, url)) {
+        int httpCode = http.GET();
+        if (httpCode > 0) {
+            Serial.printf("HTTP GET code: %d\n", httpCode);
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+                version = http.getString();
+            }
+        } else {
+            Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+        }
+        http.end();
+    } else {
+      Serial.printf("HTTP GET failed, error: unable to connect\n");
     }
     return version;
 }
@@ -136,13 +147,7 @@ String ESPCD::getRemoteVersion() {
 void ESPCD::update() {
     String url = this->baseUrl + "/firmware?device=" + this->id;
 
-    WiFiClient* client;
-    if (this->secure) {
-        client = this->getSecureClient();
-    } else {
-        client = new WiFiClient();
-    }
-
+    std::unique_ptr<WiFiClient> client = this->getClient();
 #if defined(ARDUINO_ARCH_ESP32)
     t_httpUpdate_return ret = httpUpdate.update(*client, url);
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -214,6 +219,5 @@ void ESPCD::loop() {
             }
         }
     }
-
     portal.handleClient();
 }
