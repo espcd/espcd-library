@@ -121,8 +121,16 @@ std::unique_ptr<WiFiClient> ESPCD::getClient() {
     return client;
 }
 
+String ESPCD::buildUrl(String path) {
+    if (path.startsWith("/")) {
+        path = path.substring(1, path.length());
+    }
+    String url = this->baseUrl + "/" + path + "?device=" + this->id;
+    return url;
+}
+
 String ESPCD::getRemoteVersion() {
-    String url = this->baseUrl + "/version?device=" + this->id;
+    String url = buildUrl("/version");
 
     String version = DEFAULT_VERSION;
     HTTPClient http;
@@ -145,7 +153,7 @@ String ESPCD::getRemoteVersion() {
 }
 
 void ESPCD::update() {
-    String url = this->baseUrl + "/firmware?device=" + this->id;
+    String url = buildUrl("/firmware");
 
     std::unique_ptr<WiFiClient> client = this->getClient();
 #if defined(ARDUINO_ARCH_ESP32)

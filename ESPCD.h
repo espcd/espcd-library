@@ -29,6 +29,7 @@ class ESPCD {
     char id[9];
     void generateId();
     void syncTime();
+    String buildUrl(String path);
     void setLocalVersion(String version);
     std::unique_ptr<WiFiClient> getClient();
     String getLocalVersion();
