@@ -1,5 +1,5 @@
-#ifndef ESPCD_h
-#define ESPCD_h
+#ifndef ESPCD_H
+#define ESPCD_H
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <WebServer.h>
@@ -10,6 +10,7 @@
 
 #define IDENTIFIER "ESPCD"
 #define VERSION_KEY "version"
+#define VERSION_LEN 40
 #define VERSION_CHECK_INTERVAL 5000
 #define DEFAULT_VERSION ""
 
@@ -26,7 +27,7 @@ class ESPCD {
   private:
     String baseUrl;
     bool secure;
-    char id[13];
+    char id[9];
     void generateId();
     void syncTime();
     void setLocalVersion(String version);

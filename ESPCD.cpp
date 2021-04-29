@@ -1,4 +1,5 @@
 #include "ESPCD.h"
+#include "cert.h"
 #include "Arduino.h"
 #if defined(ARDUINO_ARCH_ESP32)
 #include <WiFi.h>
@@ -9,6 +10,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266httpUpdate.h>
 #include <ESP8266HTTPClient.h>
+#include <EEPROM.h>
 #endif
 #include <AutoConnect.h>
 
@@ -18,31 +20,12 @@ AutoConnectConfig config;
 #if defined(ARDUINO_ARCH_ESP32)
 Preferences pref;
 #elif defined(ARDUINO_ARCH_ESP8266)
-
+typedef struct {
+  char  version[40];
+} EEPROM_CONFIG_t;
 #endif
 
 long previousMillis = 0;
-
-const char* rootCACert = \
-"-----BEGIN CERTIFICATE-----\n" \
-"MIIDBTCCAe2gAwIBAgIUUBrzGjoZ09d5JV1rpVhfAxUE3/MwDQYJKoZIhvcNAQEL\n" \
-"BQAwEjEQMA4GA1UEAwwHdGVzdC1jYTAeFw0yMTA0MjMxMDUyMTdaFw0yMTA2MjIx\n" \
-"MDUyMTdaMBIxEDAOBgNVBAMMB3Rlc3QtY2EwggEiMA0GCSqGSIb3DQEBAQUAA4IB\n" \
-"DwAwggEKAoIBAQDnN55s+wkKuEENn89QBEo5YJW8DhH6bBQRDYcARlvEKcrdAJwY\n" \
-"vJvqFRYiewFAdUDRIy4DdhfCxI6Mhh2hYAeS4Dqvc7ZEuEacwkAf5s/cE/PoYOk0\n" \
-"z6KO9IDCdJGy14Nz2ft0cSmYtojhawSdLzNmPJ4r4x+Wi2+aZScBzQhnOZltGsNC\n" \
-"Sk+zNQbrpXxCp+qAkMcTdSDzF3SrZ9viodpZoHIjKnqu8wVlpKLXILODFFYxByr6\n" \
-"0eNNXK0UPjYfKv7R7B8niSGTPL//9prAKYDkOY0cZQoDBJWV9Uk/J1cuz0Pt8Y/4\n" \
-"ioIcnDxwuGhHdWDEFgKN0qwmATIESdSJ55GPAgMBAAGjUzBRMB0GA1UdDgQWBBQW\n" \
-"Ye4fGdrVQq1bejZ6/Skvk2d3mDAfBgNVHSMEGDAWgBQWYe4fGdrVQq1bejZ6/Skv\n" \
-"k2d3mDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQDPiVC96x3h\n" \
-"jiuxYJI5ai1KzE4SFSZO2/UACxkeUPq6zzx1KICPiqz82hcqpiEuvSsf/tZ9vX9p\n" \
-"/e89zF8pSxiO31xDOIr24+ZDXHIU1SwKP0y0vhwT1AI9B4W7aXxwu7FXcDK2v7Gn\n" \
-"VkSKl9TPLMHOCHohITfSVZgofLxietXQu6h1a3eNayvhMEEN9G/lFfaThUrThyPo\n" \
-"T2WtTs1lTW3b/xkwe4ZTIBlV4JmEm1Ym8XdzBlQWJL66bOP55oGvC198Mv+IxXws\n" \
-"0wqpXvwX9JmjcTh5umhVMHMYt4sGXnKqvbP8WTIxg0kK0ym61NDeSb+VNspvNg93\n" \
-"5pB9PJVvLFuv\n" \
-"-----END CERTIFICATE-----\n";
 
 ESPCD::ESPCD(String baseUrl) {
     if (baseUrl.endsWith("/")) {
@@ -54,9 +37,11 @@ ESPCD::ESPCD(String baseUrl) {
 }
 
 void ESPCD::generateId() {
-    uint64_t chipid = ESP.getEfuseMac();
-    uint16_t chip = (uint16_t)(chipid >> 32);
-    snprintf(this->id, 13, "%04X%08X", chip, (uint32_t)chipid);
+#ifdef ESP8266
+    sprintf_P(this->id, PSTR("%08x"), ESP.getChipId());
+#else
+    sprintf_P(this->id, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+#endif
 }
 
 void ESPCD::syncTime() {
@@ -84,24 +69,47 @@ void ESPCD::setLocalVersion(String version) {
     pref.putString(VERSION_KEY, version);
     pref.end();
     #elif defined(ARDUINO_ARCH_ESP8266)
-
+    EEPROM_CONFIG_t eepromConfig;
+    strncpy(eepromConfig.version, version.c_str(), sizeof(EEPROM_CONFIG_t::version));
+    EEPROM.begin(portal.getEEPROMUsedSize());
+    EEPROM.put<EEPROM_CONFIG_t>(0, eepromConfig);
+    EEPROM.commit();
+    EEPROM.end();
     #endif
 }
 
+String toString(char* c, uint8_t length) {
+  String r;
+  while (length-- && *c) {
+    r += (isAlphaNumeric(*c) ? String(*c) : String(*c, HEX));
+    c++;
+  }
+  return r;
+}
+
 String ESPCD::getLocalVersion() {
+    String version = DEFAULT_VERSION;
     #if defined(ARDUINO_ARCH_ESP32)
     pref.begin(IDENTIFIER, false);
-    String version = pref.getString(VERSION_KEY, DEFAULT_VERSION);
+    version = pref.getString(VERSION_KEY, DEFAULT_VERSION);
     pref.end();
     #elif defined(ARDUINO_ARCH_ESP8266)
-
+    EEPROM_CONFIG_t eepromConfig;
+    EEPROM.begin(sizeof(eepromConfig));
+    EEPROM.get<EEPROM_CONFIG_t>(0, eepromConfig);
+    EEPROM.end();
+    version = toString(eepromConfig.version, sizeof(EEPROM_CONFIG_t::version));
     #endif
     return version;
 }
 
 WiFiClientSecure* ESPCD::getSecureClient() {
     WiFiClientSecure* client = new WiFiClientSecure();
-    client->setCACert(rootCACert);
+#if defined(ARDUINO_ARCH_ESP32)
+    client->setCACert((const char *) certs_ca_pem);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    client->setCACert(certs_ca_pem, certs_ca_pem_len);
+#endif
     client->setTimeout(12);
     return client;
 }
@@ -162,8 +170,11 @@ void ESPCD::setup() {
 
     config.autoReconnect = true;
     config.reconnectInterval = 6;
+#if defined(ARDUINO_ARCH_ESP8266)
+    config.boundaryOffset = sizeof(EEPROM_CONFIG_t);
+#endif
     portal.config(config);
-    
+
     if (portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
@@ -193,11 +204,11 @@ void ESPCD::loop() {
 
             String localVersion = this->getLocalVersion();
             String remoteVersion = this->getRemoteVersion();
-            Serial.printf("Local version: %s\n", localVersion);
-            Serial.printf("Remote version: %s\n", remoteVersion);
+            Serial.printf("Local version: %s\n", localVersion.c_str());
+            Serial.printf("Remote version: %s\n", remoteVersion.c_str());
 
             if (remoteVersion != DEFAULT_VERSION && localVersion != remoteVersion) {
-                Serial.printf("Updating to version %s\n", remoteVersion);
+                Serial.printf("Updating to version %s\n", remoteVersion.c_str());
                 this->setLocalVersion(remoteVersion);
                 this->update();
             }
