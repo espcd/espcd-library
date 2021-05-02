@@ -23,15 +23,14 @@
 #if defined(ARDUINO_ARCH_ESP32)
 #include <Preferences.h>
 #define IDENTIFIER "ESPCD"
+#define VERSION_KEY "version"
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <EEPROM.h>
 typedef struct {
-  char  version[40];
+  char  version[40+1];  // hexadecimal SHA-1 number is 40 digits long + null character as string terminator
 } EEPROM_CONFIG_t;
 #endif
 
-#define VERSION_KEY "version"
-#define VERSION_LEN 40
 #define VERSION_CHECK_INTERVAL 5000
 #define DEFAULT_VERSION ""
 

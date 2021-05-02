@@ -59,15 +59,6 @@ void ESPCD::setLocalVersion(String version) {
 #endif
 }
 
-String toString(char* c, uint8_t length) {
-  String r;
-  while (length-- && *c) {
-    r += (isAlphaNumeric(*c) ? String(*c) : String(*c, HEX));
-    c++;
-  }
-  return r;
-}
-
 String ESPCD::getLocalVersion() {
     String version = DEFAULT_VERSION;
 #if defined(ARDUINO_ARCH_ESP32)
@@ -79,7 +70,7 @@ String ESPCD::getLocalVersion() {
     EEPROM.begin(sizeof(eepromConfig));
     EEPROM.get<EEPROM_CONFIG_t>(0, eepromConfig);
     EEPROM.end();
-    version = toString(eepromConfig.version, sizeof(EEPROM_CONFIG_t::version));
+    version = String(eepromConfig.version);
 #endif
     return version;
 }
