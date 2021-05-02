@@ -1,15 +1,35 @@
 #ifndef ESPCD_H
 #define ESPCD_H
 
+#include "Arduino.h"
 #if defined(ARDUINO_ARCH_ESP32)
+#include <WiFi.h>
+#include <HTTPUpdate.h>
+#include <HTTPClient.h>
 #include <WebServer.h>
+#define HttpUpdateClass httpUpdate
 #define WebServerClass WebServer
 #elif defined(ARDUINO_ARCH_ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266httpUpdate.h>
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
+#define HttpUpdateClass ESPhttpUpdate
 #define WebServerClass ESP8266WebServer
 #endif
+#include <AutoConnect.h>
+#include <WiFiClientSecure.h>
 
+#if defined(ARDUINO_ARCH_ESP32)
+#include <Preferences.h>
 #define IDENTIFIER "ESPCD"
+#elif defined(ARDUINO_ARCH_ESP8266)
+#include <EEPROM.h>
+typedef struct {
+  char  version[40];
+} EEPROM_CONFIG_t;
+#endif
+
 #define VERSION_KEY "version"
 #define VERSION_LEN 40
 #define VERSION_CHECK_INTERVAL 5000
@@ -25,6 +45,11 @@ class ESPCD {
     String baseUrl;
     bool secure;
     String id;
+    long previousMillis;
+    AutoConnect portal;
+#if defined(ARDUINO_ARCH_ESP32)
+    Preferences pref;
+#endif
     String generateId();
     void syncTime();
     String buildUrl(String path);

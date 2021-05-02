@@ -1,34 +1,5 @@
 #include "ESPCD.h"
 #include "cert.h"
-#include "Arduino.h"
-#if defined(ARDUINO_ARCH_ESP32)
-#include <WiFi.h>
-#include <HTTPUpdate.h>
-#include <HTTPClient.h>
-#include <Preferences.h>
-#define HttpUpdateClass httpUpdate
-#elif defined(ARDUINO_ARCH_ESP8266)
-#include <ESP8266WiFi.h>
-#include <ESP8266httpUpdate.h>
-#include <ESP8266HTTPClient.h>
-#include <EEPROM.h>
-#define HttpUpdateClass ESPhttpUpdate
-#endif
-#include <AutoConnect.h>
-#include <WiFiClientSecure.h>
-
-AutoConnect portal;
-AutoConnectConfig config;
-
-#if defined(ARDUINO_ARCH_ESP32)
-Preferences pref;
-#elif defined(ARDUINO_ARCH_ESP8266)
-typedef struct {
-  char  version[40];
-} EEPROM_CONFIG_t;
-#endif
-
-long previousMillis = 0;
 
 ESPCD::ESPCD(String baseUrl) {
     if (baseUrl.endsWith("/")) {
@@ -75,13 +46,13 @@ void ESPCD::syncTime() {
 
 void ESPCD::setLocalVersion(String version) {
 #if defined(ARDUINO_ARCH_ESP32)
-    pref.begin(IDENTIFIER, false);
-    pref.putString(VERSION_KEY, version);
-    pref.end();
+    this->pref.begin(IDENTIFIER, false);
+    this->pref.putString(VERSION_KEY, version);
+    this->pref.end();
 #elif defined(ARDUINO_ARCH_ESP8266)
     EEPROM_CONFIG_t eepromConfig;
     strncpy(eepromConfig.version, version.c_str(), sizeof(EEPROM_CONFIG_t::version));
-    EEPROM.begin(portal.getEEPROMUsedSize());
+    EEPROM.begin(this->portal.getEEPROMUsedSize());
     EEPROM.put<EEPROM_CONFIG_t>(0, eepromConfig);
     EEPROM.commit();
     EEPROM.end();
@@ -100,9 +71,9 @@ String toString(char* c, uint8_t length) {
 String ESPCD::getLocalVersion() {
     String version = DEFAULT_VERSION;
 #if defined(ARDUINO_ARCH_ESP32)
-    pref.begin(IDENTIFIER, false);
-    version = pref.getString(VERSION_KEY, DEFAULT_VERSION);
-    pref.end();
+    this->pref.begin(IDENTIFIER, false);
+    version = this->pref.getString(VERSION_KEY, DEFAULT_VERSION);
+    this->pref.end();
 #elif defined(ARDUINO_ARCH_ESP8266)
     EEPROM_CONFIG_t eepromConfig;
     EEPROM.begin(sizeof(eepromConfig));
@@ -182,14 +153,17 @@ void ESPCD::update() {
 void ESPCD::setup() {
     Serial.println("Hello from setup");
 
+    this->previousMillis = 0;
+
+    AutoConnectConfig config;
     config.autoReconnect = true;
     config.reconnectInterval = 6;
 #if defined(ARDUINO_ARCH_ESP8266)
     config.boundaryOffset = sizeof(EEPROM_CONFIG_t);
 #endif
-    portal.config(config);
+    this->portal.config(config);
 
-    if (portal.begin()) {
+    if (this->portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
         if (this->secure) {
@@ -201,14 +175,14 @@ void ESPCD::setup() {
 }
 
 WebServerClass& ESPCD::getServer() {
-    return portal.host();
+    return this->portal.host();
 }
 
 void ESPCD::loop() {
     if (WiFi.status() == WL_CONNECTED) {
         long currentMillis = millis();
-        if (currentMillis - previousMillis > VERSION_CHECK_INTERVAL) {
-            previousMillis = currentMillis;
+        if (currentMillis - this->previousMillis > VERSION_CHECK_INTERVAL) {
+            this->previousMillis = currentMillis;
 
             String localVersion = this->getLocalVersion();
             String remoteVersion = this->getRemoteVersion();
@@ -222,5 +196,5 @@ void ESPCD::loop() {
             }
         }
     }
-    portal.handleClient();
+    this->portal.handleClient();
 }
