@@ -3,8 +3,10 @@
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <WebServer.h>
+#define WebServerClass WebServer
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266WebServer.h>
+#define WebServerClass ESP8266WebServer
 #endif
 
 #define IDENTIFIER "ESPCD"
@@ -18,11 +20,7 @@ class ESPCD {
     ESPCD(String baseUrl);
     void setup();
     void loop();
-#if defined(ARDUINO_ARCH_ESP32)
-    WebServer& getServer();
-#elif defined(ARDUINO_ARCH_ESP8266)
-    ESP8266WebServer& getServer();
-#endif
+    WebServerClass& getServer();
   private:
     String baseUrl;
     bool secure;

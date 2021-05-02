@@ -6,11 +6,13 @@
 #include <HTTPUpdate.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
+#define HttpUpdateClass httpUpdate
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266WiFi.h>
 #include <ESP8266httpUpdate.h>
 #include <ESP8266HTTPClient.h>
 #include <EEPROM.h>
+#define HttpUpdateClass ESPhttpUpdate
 #endif
 #include <AutoConnect.h>
 #include <WiFiClientSecure.h>
@@ -163,18 +165,10 @@ void ESPCD::update() {
     String url = buildUrl("/firmware");
 
     std::unique_ptr<WiFiClient> client = this->getClient();
-#if defined(ARDUINO_ARCH_ESP32)
-    t_httpUpdate_return ret = httpUpdate.update(*client, url);
-#elif defined(ARDUINO_ARCH_ESP8266)
-    t_httpUpdate_return ret = ESPhttpUpdate.update(*client, url);
-#endif
+    t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
     switch (ret) {
     case HTTP_UPDATE_FAILED:
-#if defined(ARDUINO_ARCH_ESP32)
-        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-#elif defined(ARDUINO_ARCH_ESP8266)
-        Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-#endif
+        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
         break;
     case HTTP_UPDATE_NO_UPDATES:
         Serial.println("HTTP_UPDATE_NO_UPDATES");
@@ -206,15 +200,9 @@ void ESPCD::setup() {
     }
 }
 
-#if defined(ARDUINO_ARCH_ESP32)
-WebServer& ESPCD::getServer() {
+WebServerClass& ESPCD::getServer() {
     return portal.host();
 }
-#elif defined(ARDUINO_ARCH_ESP8266)
-ESP8266WebServer& ESPCD::getServer() {
-    return portal.host();
-}
-#endif
 
 void ESPCD::loop() {
     if (WiFi.status() == WL_CONNECTED) {
