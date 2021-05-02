@@ -26,8 +26,8 @@ class ESPCD {
   private:
     String baseUrl;
     bool secure;
-    char id[9];
-    void generateId();
+    String id;
+    String generateId();
     void syncTime();
     String buildUrl(String path);
     void setLocalVersion(String version);

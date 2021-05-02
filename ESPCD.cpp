@@ -34,14 +34,21 @@ ESPCD::ESPCD(String baseUrl) {
     }
     this->baseUrl = baseUrl;
     this->secure = this->baseUrl.startsWith("https") ? true : false;
-    generateId();
+    this->id = generateId();
 }
 
-void ESPCD::generateId() {
+String ESPCD::generateId() {
 #if defined(ARDUINO_ARCH_ESP32)
-    sprintf_P(this->id, PSTR("%08x"), (uint32_t)(ESP.getEfuseMac() << 40 >> 40));
+    uint64_t chipid = ESP.getEfuseMac();
+    uint16_t chip = (uint16_t)(chipid >> 32);
+    char id[13];
+    snprintf(id, 13, "%04X%08X", chip, (uint32_t)chipid);
+    return String(id);
 #elif defined(ARDUINO_ARCH_ESP8266)
-    sprintf_P(this->id, PSTR("%08x"), ESP.getChipId());
+    uint32_t chipid = ESP.getChipId();
+    char id[9];
+    snprintf(id, 9, "%08X", chipid);
+    return String(id);
 #endif
 }
 
