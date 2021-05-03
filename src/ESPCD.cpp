@@ -6,22 +6,22 @@ ESPCD::ESPCD(String baseUrl) {
         baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
     this->baseUrl = baseUrl;
-    this->secure = this->baseUrl.startsWith("https") ? true : false;
-    this->id = generateId();
+    this->secure = baseUrl.startsWith("https") ? true : false;
+    this->deviceId = this->generateDeviceId();
 }
 
-String ESPCD::generateId() {
+String ESPCD::generateDeviceId() {
 #if defined(ARDUINO_ARCH_ESP32)
     uint64_t chipid = ESP.getEfuseMac();
     uint16_t chip = (uint16_t)(chipid >> 32);
-    char id[13];
-    snprintf(id, 13, "%04X%08X", chip, (uint32_t)chipid);
-    return String(id);
+    char deviceId[13];
+    snprintf(deviceId, 13, "%04X%08X", chip, (uint32_t)chipid);
+    return String(deviceId);
 #elif defined(ARDUINO_ARCH_ESP8266)
     uint32_t chipid = ESP.getChipId();
-    char id[9];
-    snprintf(id, 9, "%08X", chipid);
-    return String(id);
+    char deviceId[9];
+    snprintf(deviceId, 9, "%08X", chipid);
+    return String(deviceId);
 #endif
 }
 
@@ -93,15 +93,28 @@ std::unique_ptr<WiFiClient> ESPCD::getClient() {
 }
 
 String ESPCD::buildUrl(String path) {
+    std::vector<std::pair<String, String>> params;
+    return this->buildUrl(path, params);
+}
+
+String ESPCD::buildUrl(String path, std::vector<std::pair<String, String>> params) {
     if (path.startsWith("/")) {
         path = path.substring(1, path.length());
     }
-    String url = this->baseUrl + "/" + path + "?device=" + this->id;
+    String url = this->baseUrl + "/" + path;
+    params.push_back(std::make_pair("device", this->deviceId));
+    for (int i = 0; i < params.size(); i++) {
+        String separator = i == 0 ? "?" : "&";
+        url += separator + params[i].first + "=" + params[i].second;
+    }
     return url;
 }
 
 String ESPCD::getRemoteVersion() {
-    String url = buildUrl("/version");
+    std::vector<std::pair<String, String>> params;
+    String localVersion = this->getLocalVersion();
+    params.push_back(std::make_pair("current", localVersion));
+    String url = this->buildUrl("/version", params);
 
     String version = DEFAULT_VERSION;
     HTTPClient http;
@@ -124,7 +137,7 @@ String ESPCD::getRemoteVersion() {
 }
 
 void ESPCD::update() {
-    String url = buildUrl("/firmware");
+    String url = this->buildUrl("/firmware");
 
     std::unique_ptr<WiFiClient> client = this->getClient();
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
@@ -158,7 +171,7 @@ void ESPCD::setup() {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
         if (this->secure) {
-            syncTime();
+            this->syncTime();
         }
     } else {
         Serial.println("Connection failed.");

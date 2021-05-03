@@ -43,15 +43,16 @@ class ESPCD {
   private:
     String baseUrl;
     bool secure;
-    String id;
+    String deviceId;
     long previousMillis;
     AutoConnect portal;
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences pref;
 #endif
-    String generateId();
+    String generateDeviceId();
     void syncTime();
     String buildUrl(String path);
+    String buildUrl(String path, std::vector<std::pair<String, String>> params);
     void setLocalVersion(String version);
     std::unique_ptr<WiFiClient> getClient();
     String getLocalVersion();
