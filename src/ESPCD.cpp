@@ -8,6 +8,7 @@ ESPCD::ESPCD(String baseUrl) {
     this->baseUrl = baseUrl;
     this->secure = baseUrl.startsWith("https") ? true : false;
     this->deviceId = this->generateDeviceId();
+    this->model = this->generateModel();
 }
 
 String ESPCD::generateDeviceId() {
@@ -23,6 +24,16 @@ String ESPCD::generateDeviceId() {
     snprintf(deviceId, 9, "%08X", chipid);
     return String(deviceId);
 #endif
+}
+
+String ESPCD::generateModel() {
+    String model = "unknown";
+#if defined(ARDUINO_ARCH_ESP32)
+    model = "ESP32";
+#elif defined(ARDUINO_ARCH_ESP8266)
+    model = "ESP8266";
+#endif
+    return model;
 }
 
 void ESPCD::syncTime() {
@@ -103,6 +114,7 @@ String ESPCD::buildUrl(String path, std::vector<std::pair<String, String>> param
     }
     String url = this->baseUrl + "/" + path;
     params.push_back(std::make_pair("device", this->deviceId));
+    params.push_back(std::make_pair("model", this->model));
     for (int i = 0; i < params.size(); i++) {
         String separator = i == 0 ? "?" : "&";
         url += separator + params[i].first + "=" + params[i].second;
