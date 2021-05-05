@@ -122,64 +122,85 @@ std::unique_ptr<WiFiClient> ESPCD::getClient() {
     return client;
 }
 
-DynamicJsonDocument ESPCD::getDevice(String deviceId) {
-    DynamicJsonDocument response(2048);
+DynamicJsonDocument ESPCD::sendRequest(String method, String url) {
+    DynamicJsonDocument body(2048);
+    return this->sendRequest(method, url, body);
+}
 
-    String url = this->baseUrl + "/devices/" + deviceId;
+DynamicJsonDocument ESPCD::sendRequest(String method, String url, DynamicJsonDocument body) {
+    DynamicJsonDocument response(2048);
 
     HTTPClient http;
     http.useHTTP10(true);
 
     std::unique_ptr<WiFiClient> client = this->getClient();
     if (http.begin(*client, url)) {
-        int httpCode = http.GET();
+        String json;
+        if (body.size() > 0) {
+            http.addHeader("Content-Type", "application/json");
+            serializeJson(body, json);
+        }
+
+        int httpCode;
+        bool ok;
+        if (method == "GET") {
+            httpCode = http.GET();
+            ok = httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY;
+        } else if (method == "POST") {
+            httpCode = http.POST(json);
+            ok = httpCode == HTTP_CODE_CREATED;
+        } else if (method == "PATCH") {
+            httpCode = http.sendRequest("PATCH", json);
+            ok = httpCode == HTTP_CODE_NO_CONTENT;
+        }
+
         if (httpCode > 0) {
-            Serial.printf("HTTP GET code: %d\n", httpCode);
-            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+            Serial.printf("HTTP code: %d\n", httpCode);
+            if (ok) {
                 deserializeJson(response, http.getStream());
             }
         } else {
-            Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+            Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
         }
         http.end();
     } else {
-      Serial.printf("HTTP GET failed, error: unable to connect\n");
+      Serial.printf("HTTP failed, error: unable to connect\n");
     }
 
     return response;
 }
 
-DynamicJsonDocument ESPCD::createDevice() {
-    DynamicJsonDocument response(2048);
+DynamicJsonDocument ESPCD::getRequest(String url) {
+    return this->sendRequest("GET", url);
+}
 
+DynamicJsonDocument ESPCD::postRequest(String url, DynamicJsonDocument request) {
+    return this->sendRequest("POST", url, request);
+}
+
+DynamicJsonDocument ESPCD::patchRequest(String url, DynamicJsonDocument request) {
+    return this->sendRequest("PATCH", url, request);
+}
+
+DynamicJsonDocument ESPCD::getDevice(String id) {
+    String url = this->baseUrl + "/devices/" + id;
+    DynamicJsonDocument response = getRequest(url);
+    return response;
+}
+
+DynamicJsonDocument ESPCD::getFirmware(String id) {
+    String url = this->baseUrl + "/firmwares/" + id;
+    DynamicJsonDocument response = getRequest(url);
+    return response;
+}
+
+DynamicJsonDocument ESPCD::createDevice() {
     String url = this->baseUrl + "/devices";
 
-    HTTPClient http;
-    http.useHTTP10(true);
+    DynamicJsonDocument request(2048);
+    request["model"] = this->getModel();
 
-    std::unique_ptr<WiFiClient> client = this->getClient();
-    if (http.begin(*client, url)) {
-        http.addHeader("Content-Type", "application/json");
-
-        DynamicJsonDocument request(2048);
-        request["model"] = this->getModel();
-        String json;
-        serializeJson(request, json);
-
-        int httpCode = http.POST(json);
-        if (httpCode > 0) {
-            Serial.printf("HTTP POST code: %d\n", httpCode);
-            if (httpCode == HTTP_CODE_CREATED) {
-                deserializeJson(response, http.getStream());
-            }
-        } else {
-            Serial.printf("HTTP POST failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-        http.end();
-    } else {
-      Serial.printf("HTTP POST failed, error: unable to connect\n");
-    }
-
+    DynamicJsonDocument response = postRequest(url, request);
     return response;
 }
 

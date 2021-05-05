@@ -57,9 +57,17 @@ class ESPCD {
     String getModel();
     void update();
 
-    DynamicJsonDocument getDevice(String deviceId);
+    DynamicJsonDocument sendRequest(String method, String url);
+    DynamicJsonDocument sendRequest(String method, String url, DynamicJsonDocument body);
+    DynamicJsonDocument getRequest(String url);
+    DynamicJsonDocument postRequest(String url, DynamicJsonDocument request);
+    DynamicJsonDocument patchRequest(String url, DynamicJsonDocument request);
+    
+    DynamicJsonDocument getDevice(String id);
     DynamicJsonDocument getOrCreateDevice();
     DynamicJsonDocument createDevice();
+
+    DynamicJsonDocument getFirmware(String id);
 
 #if defined(ARDUINO_ARCH_ESP32)
     String getNvsValue(const char* key);
