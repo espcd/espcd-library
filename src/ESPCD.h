@@ -19,20 +19,23 @@
 #endif
 #include <AutoConnect.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <Preferences.h>
 #define IDENTIFIER "ESPCD"
-#define VERSION_KEY "version"
+#define DEVICE_KEY "deviceId"
+#define FIRMWARE_KEY "firmwareId"
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <EEPROM.h>
 typedef struct {
-  char  version[40+1];  // hexadecimal SHA-1 number is 40 digits long + null character as string terminator
+  char deviceId[36+1];  // hexadecimal uuid is 36 digits long + null character as string terminator
+  char firmwareId[36+1];
 } EEPROM_CONFIG_t;
 #endif
 
 #define VERSION_CHECK_INTERVAL 5000
-#define DEFAULT_VERSION ""
+#define DEFAULT_VALUE "undefined"
 
 class ESPCD {
   public:
@@ -43,23 +46,34 @@ class ESPCD {
   private:
     String baseUrl;
     bool secure;
-    String deviceId;
-    String model;
     long previousMillis;
     AutoConnect portal;
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences pref;
 #endif
-    String generateDeviceId();
     void syncTime();
-    String buildUrl(String path);
-    String buildUrl(String path, std::vector<std::pair<String, String>> params);
-    void setLocalVersion(String version);
     std::unique_ptr<WiFiClient> getClient();
-    String getLocalVersion();
     String getRemoteVersion();
-    String generateModel();
+    String getModel();
     void update();
+
+    DynamicJsonDocument getDevice(String deviceId);
+    DynamicJsonDocument getOrCreateDevice();
+    DynamicJsonDocument createDevice();
+
+#if defined(ARDUINO_ARCH_ESP32)
+    String getNvsValue(const char* key);
+    void setNvsValue(const char* key, String value);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    String getEepromValue(String key);
+    void setEepromValue(String key, String value, size_t size);
+#endif
+
+    String getFirmwareId();
+    void setFirmwareId(String id);
+
+    String getDeviceId();
+    void setDeviceId(String id);
 };
 
 #endif

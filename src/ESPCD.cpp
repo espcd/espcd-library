@@ -7,27 +7,10 @@ ESPCD::ESPCD(String baseUrl) {
     }
     this->baseUrl = baseUrl;
     this->secure = baseUrl.startsWith("https") ? true : false;
-    this->deviceId = this->generateDeviceId();
-    this->model = this->generateModel();
 }
 
-String ESPCD::generateDeviceId() {
-#if defined(ARDUINO_ARCH_ESP32)
-    uint64_t chipid = ESP.getEfuseMac();
-    uint16_t chip = (uint16_t)(chipid >> 32);
-    char deviceId[13];
-    snprintf(deviceId, 13, "%04X%08X", chip, (uint32_t)chipid);
-    return String(deviceId);
-#elif defined(ARDUINO_ARCH_ESP8266)
-    uint32_t chipid = ESP.getChipId();
-    char deviceId[9];
-    snprintf(deviceId, 9, "%08X", chipid);
-    return String(deviceId);
-#endif
-}
-
-String ESPCD::generateModel() {
-    String model = "unknown";
+String ESPCD::getModel() {
+    String model = DEFAULT_VALUE;
 #if defined(ARDUINO_ARCH_ESP32)
     model = "ESP32";
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -55,35 +38,71 @@ void ESPCD::syncTime() {
     Serial.print(asctime(&timeinfo));
 }
 
-void ESPCD::setLocalVersion(String version) {
 #if defined(ARDUINO_ARCH_ESP32)
+String ESPCD::getNvsValue(const char* key) {
     this->pref.begin(IDENTIFIER, false);
-    this->pref.putString(VERSION_KEY, version);
+    String value = this->pref.getString(key, DEFAULT_VALUE);
     this->pref.end();
-#elif defined(ARDUINO_ARCH_ESP8266)
-    EEPROM_CONFIG_t eepromConfig;
-    strncpy(eepromConfig.version, version.c_str(), sizeof(EEPROM_CONFIG_t::version));
-    EEPROM.begin(this->portal.getEEPROMUsedSize());
-    EEPROM.put<EEPROM_CONFIG_t>(0, eepromConfig);
-    EEPROM.commit();
-    EEPROM.end();
-#endif
+    return value;
 }
-
-String ESPCD::getLocalVersion() {
-    String version = DEFAULT_VERSION;
-#if defined(ARDUINO_ARCH_ESP32)
+void ESPCD::setNvsValue(const char* key, String value) {
     this->pref.begin(IDENTIFIER, false);
-    version = this->pref.getString(VERSION_KEY, DEFAULT_VERSION);
+    this->pref.putString(key, value.c_str());
     this->pref.end();
+}
 #elif defined(ARDUINO_ARCH_ESP8266)
+String ESPCD::getEepromValue(String key) {
     EEPROM_CONFIG_t eepromConfig;
     EEPROM.begin(sizeof(eepromConfig));
     EEPROM.get<EEPROM_CONFIG_t>(0, eepromConfig);
     EEPROM.end();
-    version = String(eepromConfig.version);
+    String value = String(key);
+    return value;
+}
+void ESPCD::setEepromValue(String key, String value, size_t size) {
+    EEPROM_CONFIG_t eepromConfig;
+    strncpy(key, value.c_str(), size);
+    EEPROM.begin(this->portal.getEEPROMUsedSize());
+    EEPROM.put<EEPROM_CONFIG_t>(0, eepromConfig);
+    EEPROM.commit();
+    EEPROM.end();
+}
 #endif
-    return version;
+
+String ESPCD::getFirmwareId() {
+    String id = DEFAULT_VALUE;
+#if defined(ARDUINO_ARCH_ESP32)
+    id = this->getNvsValue(FIRMWARE_KEY);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    id = this->getEepromValue(eepromConfig.firmwareId);
+#endif
+    return id;
+}
+
+void ESPCD::setFirmwareId(String id) {
+#if defined(ARDUINO_ARCH_ESP32)
+    this->setNvsValue(FIRMWARE_KEY, id);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    this->setEepromValue(eepromConfig.firmwareId, id, sizeof(EEPROM_CONFIG_t::firmwareId));
+#endif
+}
+
+String ESPCD::getDeviceId() {
+    String id = DEFAULT_VALUE;
+#if defined(ARDUINO_ARCH_ESP32)
+    id = this->getNvsValue(DEVICE_KEY);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    id = this->getEepromValue(eepromConfig.deviceId);
+#endif
+    return id;
+}
+
+void ESPCD::setDeviceId(String id) {
+#if defined(ARDUINO_ARCH_ESP32)
+    this->setNvsValue(DEVICE_KEY, id);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    this->setEepromValue(eepromConfig.deviceId, id, sizeof(EEPROM_CONFIG_t::deviceId));
+#endif
 }
 
 std::unique_ptr<WiFiClient> ESPCD::getClient() {
@@ -103,32 +122,92 @@ std::unique_ptr<WiFiClient> ESPCD::getClient() {
     return client;
 }
 
-String ESPCD::buildUrl(String path) {
-    std::vector<std::pair<String, String>> params;
-    return this->buildUrl(path, params);
+DynamicJsonDocument ESPCD::getDevice(String deviceId) {
+    DynamicJsonDocument response(2048);
+
+    String url = this->baseUrl + "/devices/" + deviceId;
+
+    HTTPClient http;
+    http.useHTTP10(true);
+
+    std::unique_ptr<WiFiClient> client = this->getClient();
+    if (http.begin(*client, url)) {
+        int httpCode = http.GET();
+        if (httpCode > 0) {
+            Serial.printf("HTTP GET code: %d\n", httpCode);
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+                deserializeJson(response, http.getStream());
+            }
+        } else {
+            Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+        }
+        http.end();
+    } else {
+      Serial.printf("HTTP GET failed, error: unable to connect\n");
+    }
+
+    return response;
 }
 
-String ESPCD::buildUrl(String path, std::vector<std::pair<String, String>> params) {
-    if (path.startsWith("/")) {
-        path = path.substring(1, path.length());
+DynamicJsonDocument ESPCD::createDevice() {
+    DynamicJsonDocument response(2048);
+
+    String url = this->baseUrl + "/devices";
+
+    HTTPClient http;
+    http.useHTTP10(true);
+
+    std::unique_ptr<WiFiClient> client = this->getClient();
+    if (http.begin(*client, url)) {
+        http.addHeader("Content-Type", "application/json");
+
+        DynamicJsonDocument request(2048);
+        request["model"] = this->getModel();
+        String json;
+        serializeJson(request, json);
+
+        int httpCode = http.POST(json);
+        if (httpCode > 0) {
+            Serial.printf("HTTP POST code: %d\n", httpCode);
+            if (httpCode == HTTP_CODE_CREATED) {
+                deserializeJson(response, http.getStream());
+            }
+        } else {
+            Serial.printf("HTTP POST failed, error: %s\n", http.errorToString(httpCode).c_str());
+        }
+        http.end();
+    } else {
+      Serial.printf("HTTP POST failed, error: unable to connect\n");
     }
-    String url = this->baseUrl + "/" + path;
-    params.push_back(std::make_pair("device", this->deviceId));
-    params.push_back(std::make_pair("model", this->model));
-    for (int i = 0; i < params.size(); i++) {
-        String separator = i == 0 ? "?" : "&";
-        url += separator + params[i].first + "=" + params[i].second;
+
+    return response;
+}
+
+DynamicJsonDocument ESPCD::getOrCreateDevice() {
+    String deviceId = this->getDeviceId();
+    Serial.print("local device id: ");
+    Serial.println(deviceId);
+
+    DynamicJsonDocument doc = this->getDevice(deviceId);
+    if (doc.size() == 0) {
+        doc = this->createDevice();
+
+        String deviceId = doc["id"].as<String>();
+        this->setDeviceId(deviceId);
+
+        String firmwareId = DEFAULT_VALUE;
+        this->setFirmwareId(firmwareId);
     }
-    return url;
+    return doc;
 }
 
 String ESPCD::getRemoteVersion() {
     std::vector<std::pair<String, String>> params;
-    String localVersion = this->getLocalVersion();
+    String localVersion = this->getFirmwareId();
     params.push_back(std::make_pair("current", localVersion));
-    String url = this->buildUrl("/version", params);
+    String url = this->baseUrl + "/version";
 
-    String version = DEFAULT_VERSION;
+    String version = DEFAULT_VALUE;
     HTTPClient http;
     std::unique_ptr<WiFiClient> client = this->getClient();
     if (http.begin(*client, url)) {
@@ -149,7 +228,7 @@ String ESPCD::getRemoteVersion() {
 }
 
 void ESPCD::update() {
-    String url = this->buildUrl("/firmware");
+    String url = this->baseUrl + "/firmware";
 
     std::unique_ptr<WiFiClient> client = this->getClient();
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
@@ -200,16 +279,18 @@ void ESPCD::loop() {
         if (currentMillis - this->previousMillis > VERSION_CHECK_INTERVAL) {
             this->previousMillis = currentMillis;
 
-            String localVersion = this->getLocalVersion();
-            String remoteVersion = this->getRemoteVersion();
-            Serial.printf("Local version: %s\n", localVersion.c_str());
-            Serial.printf("Remote version: %s\n", remoteVersion.c_str());
+            this->getOrCreateDevice();
 
-            if (remoteVersion != DEFAULT_VERSION && localVersion != remoteVersion) {
-                Serial.printf("Updating to version %s\n", remoteVersion.c_str());
-                this->setLocalVersion(remoteVersion);
-                this->update();
-            }
+            // String localVersion = this->getFirmwareId();
+            // String remoteVersion = this->getRemoteVersion();
+            // Serial.printf("Local version: %s\n", localVersion.c_str());
+            // Serial.printf("Remote version: %s\n", remoteVersion.c_str());
+
+            // if (remoteVersion != DEFAULT_VALUE && localVersion != remoteVersion) {
+            //     Serial.printf("Updating to version %s\n", remoteVersion.c_str());
+            //     this->setFirmwareId(remoteVersion);
+            //     this->update();
+            // }
         }
     }
     this->portal.handleClient();
