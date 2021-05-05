@@ -7,6 +7,7 @@ ESPCD::ESPCD(String baseUrl) {
     }
     this->baseUrl = baseUrl;
     this->secure = baseUrl.startsWith("https") ? true : false;
+    this->previousMillis = 0;
 }
 
 String ESPCD::getModel() {
@@ -143,20 +144,24 @@ DynamicJsonDocument ESPCD::sendRequest(String method, String url, DynamicJsonDoc
 
         int httpCode;
         bool ok;
+        bool hasBody;
         if (method == "GET") {
             httpCode = http.GET();
             ok = httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY;
+            hasBody = ok;
         } else if (method == "POST") {
             httpCode = http.POST(json);
             ok = httpCode == HTTP_CODE_CREATED;
+            hasBody = ok;
         } else if (method == "PATCH") {
-            httpCode = http.sendRequest("PATCH", json);
+            httpCode = http.PATCH(json);
             ok = httpCode == HTTP_CODE_NO_CONTENT;
+            hasBody = false;
         }
 
         if (httpCode > 0) {
             Serial.printf("HTTP code: %d\n", httpCode);
-            if (ok) {
+            if (hasBody) {
                 deserializeJson(response, http.getStream());
             }
         } else {
@@ -168,6 +173,34 @@ DynamicJsonDocument ESPCD::sendRequest(String method, String url, DynamicJsonDoc
     }
 
     return response;
+}
+
+String ESPCD::getRedirectedUrl(String url) {
+    const char * headerKeys[] = {"Location"};
+    const size_t numberOfHeaders = 1;
+
+    HTTPClient http;
+    int httpCode = HTTP_CODE_FOUND;
+    std::unique_ptr<WiFiClient> client = this->getClient();
+
+    while (httpCode == HTTP_CODE_FOUND) {
+        if (http.begin(*client, url)) {
+            http.collectHeaders(headerKeys, numberOfHeaders);
+            httpCode = http.sendRequest("HEAD");
+            if (httpCode > 0) {
+                Serial.printf("HTTP code: %d\n", httpCode);
+                if (httpCode == HTTP_CODE_FOUND) {
+                    url = http.header("Location");
+                }
+            } else {
+                Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
+            }
+        } else {
+            Serial.printf("HTTP failed, error: unable to connect\n");
+            break;
+        }
+    }
+    return url;
 }
 
 DynamicJsonDocument ESPCD::getRequest(String url) {
@@ -248,10 +281,16 @@ String ESPCD::getRemoteVersion() {
     return version;
 }
 
-void ESPCD::update() {
-    String url = this->baseUrl + "/firmware";
+void ESPCD::update(String firmwareId) {
+    String url = this->baseUrl + "/firmwares/" + firmwareId + "/content";
 
     std::unique_ptr<WiFiClient> client = this->getClient();
+    // setFollowRedirects is supported in arduino-esp32 version 2.0.0 which is currently not released
+#if defined(ARDUINO_ARCH_ESP32)
+    url = this->getRedirectedUrl(url);
+#elif defined(ARDUINO_ARCH_ESP8266)
+    HttpUpdateClass.setFollowRedirects(true);
+#endif
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
     switch (ret) {
     case HTTP_UPDATE_FAILED:
@@ -268,8 +307,6 @@ void ESPCD::update() {
 
 void ESPCD::setup() {
     Serial.println("Hello from setup");
-
-    this->previousMillis = 0;
 
     AutoConnectConfig config;
     config.autoReconnect = true;
@@ -300,18 +337,27 @@ void ESPCD::loop() {
         if (currentMillis - this->previousMillis > VERSION_CHECK_INTERVAL) {
             this->previousMillis = currentMillis;
 
-            this->getOrCreateDevice();
+            DynamicJsonDocument device = this->getOrCreateDevice();
+            String availableFirmware = device["available_firmware_id"].as<String>();
+            Serial.print("availableFirmware: ");
+            Serial.println(availableFirmware);
 
-            // String localVersion = this->getFirmwareId();
-            // String remoteVersion = this->getRemoteVersion();
-            // Serial.printf("Local version: %s\n", localVersion.c_str());
-            // Serial.printf("Remote version: %s\n", remoteVersion.c_str());
+            String firmwareId = this->getFirmwareId();
+            Serial.print("localFirmware: ");
+            Serial.println(firmwareId);
 
-            // if (remoteVersion != DEFAULT_VALUE && localVersion != remoteVersion) {
-            //     Serial.printf("Updating to version %s\n", remoteVersion.c_str());
-            //     this->setFirmwareId(remoteVersion);
-            //     this->update();
-            // }
+            if (availableFirmware != DEFAULT_VALUE && firmwareId != availableFirmware) {
+                Serial.println("do update");
+                this->setFirmwareId(availableFirmware);
+
+                String deviceId = this->getDeviceId();
+                String url = this->baseUrl + "/devices/" + deviceId;
+                DynamicJsonDocument request(2048);
+                request["current_firmware_id"] = availableFirmware;
+                this->patchRequest(url, request);
+
+                this->update(availableFirmware);
+            }
         }
     }
     this->portal.handleClient();

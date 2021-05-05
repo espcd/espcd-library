@@ -35,7 +35,7 @@ typedef struct {
 #endif
 
 #define VERSION_CHECK_INTERVAL 5000
-#define DEFAULT_VALUE "undefined"
+#define DEFAULT_VALUE "null"
 
 class ESPCD {
   public:
@@ -55,14 +55,15 @@ class ESPCD {
     std::unique_ptr<WiFiClient> getClient();
     String getRemoteVersion();
     String getModel();
-    void update();
+    void update(String firmwareId);
 
     DynamicJsonDocument sendRequest(String method, String url);
     DynamicJsonDocument sendRequest(String method, String url, DynamicJsonDocument body);
     DynamicJsonDocument getRequest(String url);
     DynamicJsonDocument postRequest(String url, DynamicJsonDocument request);
     DynamicJsonDocument patchRequest(String url, DynamicJsonDocument request);
-    
+    String getRedirectedUrl(String url);
+
     DynamicJsonDocument getDevice(String id);
     DynamicJsonDocument getOrCreateDevice();
     DynamicJsonDocument createDevice();
