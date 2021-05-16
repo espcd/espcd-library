@@ -20,6 +20,8 @@
 #include <AutoConnect.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+#include "Requests.h"
+#include "Response.h"
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <Preferences.h>
@@ -37,6 +39,7 @@ typedef struct {
 #define VERSION_CHECK_INTERVAL 5000
 #define DEFAULT_VALUE "null"
 
+
 class ESPCD {
   public:
     ESPCD(String baseUrl);
@@ -48,29 +51,18 @@ class ESPCD {
     bool secure;
     long previousMillis;
     AutoConnect portal;
+    Requests requests;
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences pref;
 #endif
     void syncTime();
-    std::unique_ptr<WiFiClient> getClient();
-    String getRemoteVersion();
     String getModel();
     void update(String firmwareId);
 
-    DynamicJsonDocument sendRequest(String method, String url);
-    DynamicJsonDocument sendRequest(String method, String url, DynamicJsonDocument body);
-    DynamicJsonDocument getRequest(String url);
-    DynamicJsonDocument postRequest(String url, DynamicJsonDocument request);
-    DynamicJsonDocument patchRequest(String url, DynamicJsonDocument request);
-    String getRedirectedUrl(String url);
-
-    DynamicJsonDocument getDevice(String id);
+    Response getDevice(String id);
     DynamicJsonDocument getOrCreateDevice();
     DynamicJsonDocument createDevice();
-
     DynamicJsonDocument getProduct(String id);
-
-    DynamicJsonDocument getFirmware(String id);
 
 #if defined(ARDUINO_ARCH_ESP32)
     String getNvsValue(const char* key);

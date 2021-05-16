@@ -1,12 +1,12 @@
 #include "ESPCD.h"
-#include "cert.h"
+#include "Requests.h"
+
 
 ESPCD::ESPCD(String baseUrl) {
     if (baseUrl.endsWith("/")) {
         baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
     this->baseUrl = baseUrl;
-    this->secure = baseUrl.startsWith("https") ? true : false;
     this->previousMillis = 0;
 }
 
@@ -18,25 +18,6 @@ String ESPCD::getModel() {
     model = "esp8266";
 #endif
     return model;
-}
-
-void ESPCD::syncTime() {
-    // trigger NTP time sync
-    Serial.println("Syncing NTP time...");
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // UTC
-
-    // waiting for finished sync
-    time_t now = time(nullptr);
-    while (now < 8 * 3600 * 2) {
-        delay(500);
-        now = time(nullptr);
-    }
-
-    // print NTP time
-    struct tm timeinfo;
-    gmtime_r(&now, &timeinfo);
-    Serial.print(F("Current time: "));
-    Serial.print(asctime(&timeinfo));
 }
 
 #if defined(ARDUINO_ARCH_ESP32)
@@ -106,131 +87,16 @@ void ESPCD::setDeviceId(String id) {
 #endif
 }
 
-std::unique_ptr<WiFiClient> ESPCD::getClient() {
-    std::unique_ptr<WiFiClient> client;
-    if (this->secure) {
-        std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
-#if defined(ARDUINO_ARCH_ESP32)
-        secureClient->setCACert((const char *) certs_ca_pem);
-#elif defined(ARDUINO_ARCH_ESP8266)
-        secureClient->setCACert(certs_ca_pem, certs_ca_pem_len);
-#endif
-        secureClient->setTimeout(12);
-        client = std::move(secureClient);
-    } else {
-        client = std::unique_ptr<WiFiClient>(new WiFiClient);
-    }
-    return client;
-}
-
-DynamicJsonDocument ESPCD::sendRequest(String method, String url) {
-    DynamicJsonDocument body(2048);
-    return this->sendRequest(method, url, body);
-}
-
-DynamicJsonDocument ESPCD::sendRequest(String method, String url, DynamicJsonDocument body) {
-    DynamicJsonDocument response(2048);
-
-    HTTPClient http;
-    http.useHTTP10(true);
-
-    std::unique_ptr<WiFiClient> client = this->getClient();
-    if (http.begin(*client, url)) {
-        String json;
-        if (body.size() > 0) {
-            http.addHeader("Content-Type", "application/json");
-            serializeJson(body, json);
-        }
-
-        int httpCode;
-        bool ok;
-        bool hasBody;
-        if (method == "GET") {
-            httpCode = http.GET();
-            ok = httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY;
-            hasBody = ok;
-        } else if (method == "POST") {
-            httpCode = http.POST(json);
-            ok = httpCode == HTTP_CODE_CREATED;
-            hasBody = ok;
-        } else if (method == "PATCH") {
-            httpCode = http.PATCH(json);
-            ok = httpCode == HTTP_CODE_NO_CONTENT;
-            hasBody = false;
-        }
-
-        if (httpCode > 0) {
-            Serial.printf("HTTP code: %d\n", httpCode);
-            if (hasBody) {
-                deserializeJson(response, http.getStream());
-            }
-        } else {
-            Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-        http.end();
-    } else {
-      Serial.printf("HTTP failed, error: unable to connect\n");
-    }
-
-    return response;
-}
-
-String ESPCD::getRedirectedUrl(String url) {
-    const char * headerKeys[] = {"Location"};
-    const size_t numberOfHeaders = 1;
-
-    HTTPClient http;
-    int httpCode = HTTP_CODE_FOUND;
-    std::unique_ptr<WiFiClient> client = this->getClient();
-
-    while (httpCode == HTTP_CODE_FOUND) {
-        if (http.begin(*client, url)) {
-            http.collectHeaders(headerKeys, numberOfHeaders);
-            httpCode = http.sendRequest("HEAD");
-            if (httpCode > 0) {
-                Serial.printf("HTTP code: %d\n", httpCode);
-                if (httpCode == HTTP_CODE_FOUND) {
-                    url = http.header("Location");
-                }
-            } else {
-                Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
-            }
-        } else {
-            Serial.printf("HTTP failed, error: unable to connect\n");
-            break;
-        }
-    }
-    return url;
-}
-
-DynamicJsonDocument ESPCD::getRequest(String url) {
-    return this->sendRequest("GET", url);
-}
-
-DynamicJsonDocument ESPCD::postRequest(String url, DynamicJsonDocument request) {
-    return this->sendRequest("POST", url, request);
-}
-
-DynamicJsonDocument ESPCD::patchRequest(String url, DynamicJsonDocument request) {
-    return this->sendRequest("PATCH", url, request);
-}
-
-DynamicJsonDocument ESPCD::getDevice(String id) {
+Response ESPCD::getDevice(String id) {
     String url = this->baseUrl + "/devices/" + id;
-    DynamicJsonDocument response = getRequest(url);
-    return response;
-}
-
-DynamicJsonDocument ESPCD::getFirmware(String id) {
-    String url = this->baseUrl + "/firmwares/" + id;
-    DynamicJsonDocument response = getRequest(url);
+    Response response = requests.getRequest(url);
     return response;
 }
 
 DynamicJsonDocument ESPCD::getProduct(String id) {
     String url = this->baseUrl + "/products/" + id;
-    DynamicJsonDocument response = getRequest(url);
-    return response;
+    Response response = requests.getRequest(url);
+    return response.getJson();
 }
 
 DynamicJsonDocument ESPCD::createDevice() {
@@ -239,8 +105,8 @@ DynamicJsonDocument ESPCD::createDevice() {
     DynamicJsonDocument request(2048);
     request["model"] = this->getModel();
 
-    DynamicJsonDocument response = postRequest(url, request);
-    return response;
+    Response response = requests.postRequest(url, request);
+    return response.getJson();
 }
 
 DynamicJsonDocument ESPCD::getOrCreateDevice() {
@@ -248,8 +114,9 @@ DynamicJsonDocument ESPCD::getOrCreateDevice() {
     Serial.print("local device id: ");
     Serial.println(deviceId);
 
-    DynamicJsonDocument doc = this->getDevice(deviceId);
-    if (doc.size() == 0) {
+    Response res = this->getDevice(deviceId);
+    DynamicJsonDocument doc = res.getJson();
+    if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
         doc = this->createDevice();
 
         String deviceId = doc["id"].as<String>();
@@ -257,43 +124,19 @@ DynamicJsonDocument ESPCD::getOrCreateDevice() {
 
         String firmwareId = DEFAULT_VALUE;
         this->setFirmwareId(firmwareId);
+    } else {
+        Serial.println("Do not create new device, httpCode != HTTP_CODE_NOT_FOUND");
     }
     return doc;
-}
-
-String ESPCD::getRemoteVersion() {
-    std::vector<std::pair<String, String>> params;
-    String localVersion = this->getFirmwareId();
-    params.push_back(std::make_pair("current", localVersion));
-    String url = this->baseUrl + "/version";
-
-    String version = DEFAULT_VALUE;
-    HTTPClient http;
-    std::unique_ptr<WiFiClient> client = this->getClient();
-    if (http.begin(*client, url)) {
-        int httpCode = http.GET();
-        if (httpCode > 0) {
-            Serial.printf("HTTP GET code: %d\n", httpCode);
-            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-                version = http.getString();
-            }
-        } else {
-            Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-        http.end();
-    } else {
-      Serial.printf("HTTP GET failed, error: unable to connect\n");
-    }
-    return version;
 }
 
 void ESPCD::update(String firmwareId) {
     String url = this->baseUrl + "/firmwares/" + firmwareId + "/content";
 
-    std::unique_ptr<WiFiClient> client = this->getClient();
+    std::unique_ptr<WiFiClient> client = requests.getClient();
     // setFollowRedirects is supported in arduino-esp32 version 2.0.0 which is currently not released
 #if defined(ARDUINO_ARCH_ESP32)
-    url = this->getRedirectedUrl(url);
+    url = requests.getRedirectedUrl(url);
 #elif defined(ARDUINO_ARCH_ESP8266)
     HttpUpdateClass.setFollowRedirects(true);
 #endif
@@ -325,9 +168,8 @@ void ESPCD::setup() {
     if (this->portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
-        if (this->secure) {
-            this->syncTime();
-        }
+        bool secure = baseUrl.startsWith("https") ? true : false;
+        requests.setSecure(secure);
     } else {
         Serial.println("Connection failed.");
     }
@@ -347,7 +189,7 @@ void ESPCD::loop() {
             String productId = device["product_id"].as<String>();
 
             if (productId == DEFAULT_VALUE) {
-                Serial.println("No product set");
+                Serial.println("Http Error or no product set");
                 return;
             }
 
@@ -370,7 +212,7 @@ void ESPCD::loop() {
                 String url = this->baseUrl + "/devices/" + deviceId;
                 DynamicJsonDocument request(2048);
                 request["firmware_id"] = availableFirmware;
-                this->patchRequest(url, request);
+                requests.patchRequest(url, request);
 
                 this->update(availableFirmware);
             }
