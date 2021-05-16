@@ -16,3 +16,7 @@ DynamicJsonDocument Response::getJson() {
 void Response::setJson(DynamicJsonDocument json) {
     this->json = json;
 }
+
+bool Response::ok() {
+    return this->statusCode > 0 && this->statusCode < 400;
+}

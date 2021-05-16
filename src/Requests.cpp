@@ -1,7 +1,7 @@
 #include "Requests.h"
-
 #include "Response.h"
 #include "cert.h"
+
 #if defined(ARDUINO_ARCH_ESP32)
 #include <HTTPClient.h>
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -85,12 +85,12 @@ String Requests::getRedirectedUrl(String url) {
 }
 
 Response Requests::sendRequest(String method, String url) {
-    DynamicJsonDocument body(2048);
-    return this->sendRequest(method, url, body);
+    DynamicJsonDocument payload(2048);
+    return this->sendRequest(method, url, payload);
 }
 
-Response Requests::sendRequest(String method, String url, DynamicJsonDocument body) {
-    DynamicJsonDocument data(2048);
+Response Requests::sendRequest(String method, String url, DynamicJsonDocument payload) {
+    DynamicJsonDocument json(2048);
 
     HTTPClient http;
     http.useHTTP10(true);
@@ -99,32 +99,24 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument bo
 
     std::unique_ptr<WiFiClient> client = this->getClient();
     if (http.begin(*client, url)) {
-        String json;
-        if (body.size() > 0) {
+        String payloadStr;
+        if (method == "POST" || method == "PATCH") {
             http.addHeader("Content-Type", "application/json");
-            serializeJson(body, json);
+            serializeJson(payload, payloadStr);
         }
         
-        bool ok;
-        bool hasBody;
         if (method == "GET") {
             httpCode = http.GET();
-            ok = httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY;
-            hasBody = ok;
         } else if (method == "POST") {
-            httpCode = http.POST(json);
-            ok = httpCode == HTTP_CODE_CREATED;
-            hasBody = ok;
+            httpCode = http.POST(payloadStr);
         } else if (method == "PATCH") {
-            httpCode = http.PATCH(json);
-            ok = httpCode == HTTP_CODE_NO_CONTENT;
-            hasBody = false;
+            httpCode = http.PATCH(payloadStr);
         }
 
         if (httpCode > 0) {
             Serial.printf("HTTP code: %d\n", httpCode);
-            if (hasBody) {
-                deserializeJson(data, http.getStream());
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+                deserializeJson(json, http.getStream());
             }
         } else {
             Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -136,7 +128,7 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument bo
 
     Response r;
     r.setStatusCode(httpCode);
-    r.setJson(data);
+    r.setJson(json);
     return r;
 }
 
@@ -144,10 +136,10 @@ Response Requests::getRequest(String url) {
     return this->sendRequest("GET", url);
 }
 
-Response Requests::postRequest(String url, DynamicJsonDocument body) {
-    return this->sendRequest("POST", url, body);
+Response Requests::postRequest(String url, DynamicJsonDocument payload) {
+    return this->sendRequest("POST", url, payload);
 }
 
-Response Requests::patchRequest(String url, DynamicJsonDocument body) {
-    return this->sendRequest("PATCH", url, body);
+Response Requests::patchRequest(String url, DynamicJsonDocument payload) {
+    return this->sendRequest("PATCH", url, payload);
 }

@@ -1,5 +1,15 @@
 #include "ESPCD.h"
-#include "Requests.h"
+
+#if defined(ARDUINO_ARCH_ESP32)
+#include <WiFi.h>
+#include <HTTPClient.h>
+#elif defined(ARDUINO_ARCH_ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#endif
+
+#include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 
 
 ESPCD::ESPCD(String baseUrl) {
@@ -93,41 +103,36 @@ Response ESPCD::getDevice(String id) {
     return response;
 }
 
-DynamicJsonDocument ESPCD::getProduct(String id) {
+Response ESPCD::getProduct(String id) {
     String url = this->baseUrl + "/products/" + id;
     Response response = requests.getRequest(url);
-    return response.getJson();
+    return response;
 }
 
-DynamicJsonDocument ESPCD::createDevice() {
+Response ESPCD::createDevice() {
     String url = this->baseUrl + "/devices";
 
-    DynamicJsonDocument request(2048);
-    request["model"] = this->getModel();
+    DynamicJsonDocument payload(2048);
+    payload["model"] = this->getModel();
 
-    Response response = requests.postRequest(url, request);
-    return response.getJson();
+    Response response = requests.postRequest(url, payload);
+    return response;
 }
 
-DynamicJsonDocument ESPCD::getOrCreateDevice() {
+Response ESPCD::getOrCreateDevice() {
     String deviceId = this->getDeviceId();
-    Serial.print("local device id: ");
-    Serial.println(deviceId);
+    Serial.println("local device id: " + deviceId);
 
     Response res = this->getDevice(deviceId);
-    DynamicJsonDocument doc = res.getJson();
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
-        doc = this->createDevice();
-
-        String deviceId = doc["id"].as<String>();
+        res = this->createDevice();
+        DynamicJsonDocument json = res.getJson();
+        String deviceId = json["id"].as<String>();
+        
         this->setDeviceId(deviceId);
-
-        String firmwareId = DEFAULT_VALUE;
-        this->setFirmwareId(firmwareId);
-    } else {
-        Serial.println("Do not create new device, httpCode != HTTP_CODE_NOT_FOUND");
+        this->setFirmwareId(DEFAULT_VALUE);
     }
-    return doc;
+    return res;
 }
 
 void ESPCD::update(String firmwareId) {
@@ -185,34 +190,42 @@ void ESPCD::loop() {
         if (currentMillis - this->previousMillis > VERSION_CHECK_INTERVAL) {
             this->previousMillis = currentMillis;
 
-            DynamicJsonDocument device = this->getOrCreateDevice();
+            Response deviceResponse = this->getOrCreateDevice();
+            if (!deviceResponse.ok()) {
+                Serial.println("Device request failed");
+                return;
+            }
+            DynamicJsonDocument device = deviceResponse.getJson();
             String productId = device["product_id"].as<String>();
 
             if (productId == DEFAULT_VALUE) {
-                Serial.println("Http Error or no product set");
+                Serial.println("Device product not set");
                 return;
             }
 
-            DynamicJsonDocument product = this->getProduct(productId);
+            Response productResponse = this->getProduct(productId);
+            if (!deviceResponse.ok()) {
+                Serial.println("Product request failed");
+                return;
+            }
+            DynamicJsonDocument product = productResponse.getJson();
             String availableFirmware = product["firmware_id"].as<String>();
             bool autoUpdate = product["auto_update"].as<bool>();
 
-            Serial.print("availableFirmware: ");
-            Serial.println(availableFirmware);
+            Serial.println("availableFirmware: " + availableFirmware);
 
             String firmwareId = this->getFirmwareId();
-            Serial.print("localFirmware: ");
-            Serial.println(firmwareId);
+            Serial.println("localFirmware: " + firmwareId);
 
             if (autoUpdate && availableFirmware != DEFAULT_VALUE && firmwareId != availableFirmware) {
-                Serial.println("do update");
+                Serial.println("Do update...");
                 this->setFirmwareId(availableFirmware);
 
                 String deviceId = this->getDeviceId();
                 String url = this->baseUrl + "/devices/" + deviceId;
-                DynamicJsonDocument request(2048);
-                request["firmware_id"] = availableFirmware;
-                requests.patchRequest(url, request);
+                DynamicJsonDocument payload(2048);
+                payload["firmware_id"] = availableFirmware;
+                requests.patchRequest(url, payload);
 
                 this->update(availableFirmware);
             }

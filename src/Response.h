@@ -7,9 +7,11 @@
 
 class Response {
 public:
+    bool ok();
+
     int getStatusCode();
     void setStatusCode(int statusCode);
-    
+
     DynamicJsonDocument getJson();
     void setJson(DynamicJsonDocument json);
 private:
