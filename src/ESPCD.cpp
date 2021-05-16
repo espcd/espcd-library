@@ -13,9 +13,9 @@ ESPCD::ESPCD(String baseUrl) {
 String ESPCD::getModel() {
     String model = DEFAULT_VALUE;
 #if defined(ARDUINO_ARCH_ESP32)
-    model = "ESP32";
+    model = "esp32";
 #elif defined(ARDUINO_ARCH_ESP8266)
-    model = "ESP8266";
+    model = "esp8266";
 #endif
     return model;
 }
@@ -227,6 +227,12 @@ DynamicJsonDocument ESPCD::getFirmware(String id) {
     return response;
 }
 
+DynamicJsonDocument ESPCD::getProduct(String id) {
+    String url = this->baseUrl + "/products/" + id;
+    DynamicJsonDocument response = getRequest(url);
+    return response;
+}
+
 DynamicJsonDocument ESPCD::createDevice() {
     String url = this->baseUrl + "/devices";
 
@@ -338,7 +344,17 @@ void ESPCD::loop() {
             this->previousMillis = currentMillis;
 
             DynamicJsonDocument device = this->getOrCreateDevice();
-            String availableFirmware = device["available_firmware_id"].as<String>();
+            String productId = device["product_id"].as<String>();
+
+            if (productId == DEFAULT_VALUE) {
+                Serial.println("No product set");
+                return;
+            }
+
+            DynamicJsonDocument product = this->getProduct(productId);
+            String availableFirmware = product["firmware_id"].as<String>();
+            bool autoUpdate = product["auto_update"].as<bool>();
+
             Serial.print("availableFirmware: ");
             Serial.println(availableFirmware);
 
@@ -346,14 +362,14 @@ void ESPCD::loop() {
             Serial.print("localFirmware: ");
             Serial.println(firmwareId);
 
-            if (availableFirmware != DEFAULT_VALUE && firmwareId != availableFirmware) {
+            if (autoUpdate && availableFirmware != DEFAULT_VALUE && firmwareId != availableFirmware) {
                 Serial.println("do update");
                 this->setFirmwareId(availableFirmware);
 
                 String deviceId = this->getDeviceId();
                 String url = this->baseUrl + "/devices/" + deviceId;
                 DynamicJsonDocument request(2048);
-                request["current_firmware_id"] = availableFirmware;
+                request["firmware_id"] = availableFirmware;
                 this->patchRequest(url, request);
 
                 this->update(availableFirmware);

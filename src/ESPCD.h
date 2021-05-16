@@ -68,6 +68,8 @@ class ESPCD {
     DynamicJsonDocument getOrCreateDevice();
     DynamicJsonDocument createDevice();
 
+    DynamicJsonDocument getProduct(String id);
+
     DynamicJsonDocument getFirmware(String id);
 
 #if defined(ARDUINO_ARCH_ESP32)
