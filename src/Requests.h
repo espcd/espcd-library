@@ -19,6 +19,7 @@ public:
     Requests() {}
 
     void setSecure(bool secure);
+    void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
 
     void syncTime();
     std::unique_ptr<WiFiClient> getClient();
@@ -32,6 +33,8 @@ public:
     Response patchRequest(String url, DynamicJsonDocument payload);
 private:
     bool secure;
+    unsigned char* certs_ca_pem;
+    unsigned int certs_ca_pem_len;
 };
 
 #endif

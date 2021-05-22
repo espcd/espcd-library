@@ -12,12 +12,26 @@
 #include <ArduinoJson.h>
 
 
+ESPCD::ESPCD() {}
+
 ESPCD::ESPCD(String baseUrl) {
+    this->setBaseUrl(baseUrl);
+}
+
+ESPCD::ESPCD(String baseUrl, unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
+    this->setBaseUrl(baseUrl);
+    this->setCert(certs_ca_pem, certs_ca_pem_len);
+}
+
+void ESPCD::setBaseUrl(String baseUrl) {
     if (baseUrl.endsWith("/")) {
         baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
     this->baseUrl = baseUrl;
-    this->previousMillis = 0;
+}
+
+void ESPCD::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
+    requests.setCert(certs_ca_pem, certs_ca_pem_len);
 }
 
 String ESPCD::getModel() {

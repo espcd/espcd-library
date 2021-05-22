@@ -1,6 +1,5 @@
 #include "Requests.h"
 #include "Response.h"
-#include "cert.h"
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <HTTPClient.h>
@@ -14,6 +13,11 @@ void Requests::setSecure(bool secure) {
     if (secure) {
         syncTime();
     }
+}
+
+void Requests::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
+    this->certs_ca_pem = certs_ca_pem;
+    this->certs_ca_pem_len = certs_ca_pem_len;
 }
 
 void Requests::syncTime() {
@@ -40,9 +44,9 @@ std::unique_ptr<WiFiClient> Requests::getClient() {
     if (this->secure) {
         std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
 #if defined(ARDUINO_ARCH_ESP32)
-        secureClient->setCACert((const char *) certs_ca_pem);
+        secureClient->setCACert((const char *) this->certs_ca_pem);
 #elif defined(ARDUINO_ARCH_ESP8266)
-        secureClient->setCACert(certs_ca_pem, certs_ca_pem_len);
+        secureClient->setCACert(this->certs_ca_pem, this->certs_ca_pem_len);
 #endif
         secureClient->setTimeout(12);
         client = std::move(secureClient);

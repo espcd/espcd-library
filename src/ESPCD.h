@@ -26,19 +26,22 @@
 
 class ESPCD {
   public:
+    ESPCD();
     ESPCD(String baseUrl);
+    ESPCD(String baseUrl, unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
+    void setBaseUrl(String baseUrl);
+    void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
     void setup();
     void loop();
     WebServerClass& getServer();
   private:
     String baseUrl;
     bool secure;
-    long previousMillis;
+    long previousMillis = 0;
     AutoConnect portal;
     Requests requests;
     Memory memory;
     
-    void syncTime();
     String getModel();
     void update(String firmwareId);
 
