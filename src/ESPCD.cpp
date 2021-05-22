@@ -137,7 +137,8 @@ void ESPCD::loop() {
             String availableFirmware = product["firmware_id"].as<String>();
             bool autoUpdate = product["auto_update"].as<bool>();
             Serial.println("availableFirmware: " + availableFirmware);
-            Serial.println("autoUpdate: " + autoUpdate ? 'true' : 'false');
+            Serial.print("autoUpdate: ");
+            Serial.println(autoUpdate ? "true" : "false");
 
             String firmwareId = memory.getFirmwareId();
             Serial.println("localFirmware: " + firmwareId);

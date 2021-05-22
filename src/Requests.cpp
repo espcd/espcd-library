@@ -92,7 +92,7 @@ String Requests::getRedirectedUrl(String url) {
 }
 
 String Requests::getUpdateUrl(String firmwareId) {
-    String url = this->baseUrl + "/firmwares/" + firmwareId + "/content";
+    return this->baseUrl + "/firmwares/" + firmwareId + "/content";
 }
 
 Response Requests::sendRequest(String method, String url) {
@@ -175,5 +175,6 @@ Response Requests::createDevice(DynamicJsonDocument payload) {
 
 Response Requests::patchDevice(String deviceId, DynamicJsonDocument payload) {
     String url = this->baseUrl + "/devices/" + deviceId;
-    this->patchRequest(url, payload);
+    Response response = this->patchRequest(url, payload);
+    return response;
 }
