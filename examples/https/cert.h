@@ -1,6 +1,3 @@
-#ifndef CERT_H
-#define CERT_H
-
 /*
 generated with:
 xxd -i ca.pem
@@ -102,5 +99,3 @@ unsigned char certs_ca_pem[] = {
   0x2d, 0x2d, 0x0a
 };
 unsigned int certs_ca_pem_len = 1107;
-
-#endif

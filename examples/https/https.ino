@@ -1,6 +1,7 @@
 #include <ESPCD.h>
+#include "cert.h"
 
-ESPCD espcd("http://test.example.com:3000/");
+ESPCD espcd("https://test.example.com:3000/", certs_ca_pem, certs_ca_pem_len);
 
 void setup() {
   delay(1000);
