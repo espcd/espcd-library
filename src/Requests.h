@@ -18,12 +18,13 @@ class Requests {
 public:
     Requests() {}
 
-    void setSecure(bool secure);
+    void setBaseUrl(String baseUrl);
     void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
 
-    void syncTime();
+    void setup();
     std::unique_ptr<WiFiClient> getClient();
     String getRedirectedUrl(String url);
+    String getUpdateUrl(String firmwareId);
 
     Response sendRequest(String method, String url);
     Response sendRequest(String method, String url, DynamicJsonDocument payload);
@@ -31,10 +32,18 @@ public:
     Response getRequest(String url);
     Response postRequest(String url, DynamicJsonDocument payload);
     Response patchRequest(String url, DynamicJsonDocument payload);
+
+    Response getDevice(String id);
+    Response getProduct(String id);
+    Response createDevice(DynamicJsonDocument payload);
+    Response patchDevice(String deviceId, DynamicJsonDocument payload);
 private:
+    String baseUrl;
     bool secure;
     unsigned char* certs_ca_pem;
     unsigned int certs_ca_pem_len;
+
+    void syncTime();
 };
 
 #endif

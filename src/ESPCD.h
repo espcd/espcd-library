@@ -44,11 +44,8 @@ class ESPCD {
     
     String getModel();
     void update(String firmwareId);
-
-    Response getDevice(String id);
+    
     Response getOrCreateDevice();
-    Response createDevice();
-    Response getProduct(String id);
 };
 
 #endif

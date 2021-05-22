@@ -8,16 +8,23 @@
 #endif
 
 
-void Requests::setSecure(bool secure) {
-    this->secure = secure;
-    if (secure) {
-        syncTime();
+void Requests::setBaseUrl(String baseUrl) {
+    if (baseUrl.endsWith("/")) {
+        baseUrl = baseUrl.substring(0, baseUrl.length()-1);
     }
+    this->baseUrl = baseUrl;
+    this->secure = this->baseUrl.startsWith("https") ? true : false;
 }
 
 void Requests::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
     this->certs_ca_pem = certs_ca_pem;
     this->certs_ca_pem_len = certs_ca_pem_len;
+}
+
+void Requests::setup() {
+    if (this->secure) {
+        syncTime();
+    }
 }
 
 void Requests::syncTime() {
@@ -84,6 +91,10 @@ String Requests::getRedirectedUrl(String url) {
     return url;
 }
 
+String Requests::getUpdateUrl(String firmwareId) {
+    String url = this->baseUrl + "/firmwares/" + firmwareId + "/content";
+}
+
 Response Requests::sendRequest(String method, String url) {
     DynamicJsonDocument payload(2048);
     return this->sendRequest(method, url, payload);
@@ -142,4 +153,27 @@ Response Requests::postRequest(String url, DynamicJsonDocument payload) {
 
 Response Requests::patchRequest(String url, DynamicJsonDocument payload) {
     return this->sendRequest("PATCH", url, payload);
+}
+
+Response Requests::getDevice(String id) {
+    String url = this->baseUrl + "/devices/" + id;
+    Response response = this->getRequest(url);
+    return response;
+}
+
+Response Requests::getProduct(String id) {
+    String url = this->baseUrl + "/products/" + id;
+    Response response = this->getRequest(url);
+    return response;
+}
+
+Response Requests::createDevice(DynamicJsonDocument payload) {
+    String url = this->baseUrl + "/devices";
+    Response response = this->postRequest(url, payload);
+    return response;
+}
+
+Response Requests::patchDevice(String deviceId, DynamicJsonDocument payload) {
+    String url = this->baseUrl + "/devices/" + deviceId;
+    this->patchRequest(url, payload);
 }
