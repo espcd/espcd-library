@@ -70,17 +70,26 @@ void ESPCD::update(String firmwareId) {
 #elif defined(ARDUINO_ARCH_ESP8266)
     HttpUpdateClass.setFollowRedirects(true);
 #endif
+    HttpUpdateClass.rebootOnUpdate(false);
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
     switch (ret) {
     case HTTP_UPDATE_FAILED:
         Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
         break;
-    case HTTP_UPDATE_NO_UPDATES:
-        Serial.println("HTTP_UPDATE_NO_UPDATES");
-        break;
     case HTTP_UPDATE_OK:
         Serial.println("HTTP_UPDATE_OK");
-        break;
+
+        // change installed firmware in the local memory
+        memory.setFirmwareId(firmwareId);
+
+        // change installed firmware in the backend
+        String deviceId = memory.getDeviceId();
+        DynamicJsonDocument payload(2048);
+        payload["firmware_id"] = firmwareId;
+        requests.patchDevice(deviceId, payload);
+
+        // restart
+        ESP.restart();
     }
 }
 
@@ -146,17 +155,6 @@ void ESPCD::loop() {
             // check if update possible
             if (autoUpdate && availableFirmware != "null" && firmwareId != availableFirmware) {
                 Serial.println("Do update...");
-
-                // change installed firmware in the local memory
-                memory.setFirmwareId(availableFirmware);
-
-                // change installed firmware in the backend
-                String deviceId = memory.getDeviceId();
-                DynamicJsonDocument payload(2048);
-                payload["firmware_id"] = availableFirmware;
-                requests.patchDevice(deviceId, payload);
-
-                // update the device
                 this->update(availableFirmware);
             }
         }
