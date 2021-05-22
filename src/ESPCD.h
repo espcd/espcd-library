@@ -3,6 +3,7 @@
 
 #include "Requests.h"
 #include "Response.h"
+#include "Memory.h"
 
 #include "Arduino.h"
 
@@ -20,22 +21,7 @@
 
 #include <AutoConnect.h>
 
-
-#if defined(ARDUINO_ARCH_ESP32)
-#include <Preferences.h>
-#define IDENTIFIER "ESPCD"
-#define DEVICE_KEY "deviceId"
-#define FIRMWARE_KEY "firmwareId"
-#elif defined(ARDUINO_ARCH_ESP8266)
-#include <EEPROM.h>
-typedef struct {
-  char deviceId[36+1];  // hexadecimal uuid is 36 digits long + null character as string terminator
-  char firmwareId[36+1];
-} EEPROM_CONFIG_t;
-#endif
-
 #define VERSION_CHECK_INTERVAL 5000
-#define DEFAULT_VALUE "null"
 
 
 class ESPCD {
@@ -50,9 +36,8 @@ class ESPCD {
     long previousMillis;
     AutoConnect portal;
     Requests requests;
-#if defined(ARDUINO_ARCH_ESP32)
-    Preferences pref;
-#endif
+    Memory memory;
+    
     void syncTime();
     String getModel();
     void update(String firmwareId);
@@ -61,20 +46,6 @@ class ESPCD {
     Response getOrCreateDevice();
     Response createDevice();
     Response getProduct(String id);
-
-#if defined(ARDUINO_ARCH_ESP32)
-    String getNvsValue(const char* key);
-    void setNvsValue(const char* key, String value);
-#elif defined(ARDUINO_ARCH_ESP8266)
-    String getEepromValue(String key);
-    void setEepromValue(String key, String value, size_t size);
-#endif
-
-    String getFirmwareId();
-    void setFirmwareId(String id);
-
-    String getDeviceId();
-    void setDeviceId(String id);
 };
 
 #endif

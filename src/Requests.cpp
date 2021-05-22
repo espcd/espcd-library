@@ -9,10 +9,6 @@
 #endif
 
 
-Requests::Requests(bool secure) {
-    this->setSecure(secure);
-}
-
 void Requests::setSecure(bool secure) {
     this->secure = secure;
     if (secure) {

@@ -17,7 +17,6 @@
 class Requests {
 public:
     Requests() {}
-    Requests(bool secure);
 
     void setSecure(bool secure);
 
