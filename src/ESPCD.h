@@ -26,10 +26,9 @@
 
 class ESPCD {
   public:
-    ESPCD();
-    ESPCD(String baseUrl);
-    ESPCD(String baseUrl, unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
+    ESPCD() {}
     void setBaseUrl(String baseUrl);
+    void setProductId(String productId);
     void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
     void setup();
     void loop();
@@ -37,6 +36,7 @@ class ESPCD {
   private:
     String baseUrl;
     bool secure;
+    String productId;
     long previousMillis = 0;
     AutoConnect portal;
     Requests requests;

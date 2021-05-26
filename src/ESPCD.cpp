@@ -12,19 +12,12 @@
 #include <ArduinoJson.h>
 
 
-ESPCD::ESPCD() {}
-
-ESPCD::ESPCD(String baseUrl) {
-    this->setBaseUrl(baseUrl);
-}
-
-ESPCD::ESPCD(String baseUrl, unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
-    this->setBaseUrl(baseUrl);
-    this->setCert(certs_ca_pem, certs_ca_pem_len);
-}
-
 void ESPCD::setBaseUrl(String baseUrl) {
     requests.setBaseUrl(baseUrl);
+}
+
+void ESPCD::setProductId(String productId) {
+    this->productId = productId;
 }
 
 void ESPCD::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
@@ -49,6 +42,9 @@ Response ESPCD::getOrCreateDevice() {
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
         DynamicJsonDocument payload(2048);
         payload["model"] = this->getModel();
+        if (this->productId) {
+            payload["product_id"] = this->productId;
+        }
         res = requests.createDevice(payload);
 
         DynamicJsonDocument json = res.getJson();
