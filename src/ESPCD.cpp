@@ -43,7 +43,13 @@ Response ESPCD::getOrCreateDevice() {
         DynamicJsonDocument payload(2048);
         payload["model"] = this->getModel();
         if (this->productId) {
-            payload["product_id"] = this->productId;
+            // check if product id is valid, if not remove it
+            if (requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
+                Serial.println("product id \"" + this->productId + "\" is invalid and therefore deleted");
+                this->productId = "";
+            } else {
+                payload["product_id"] = this->productId;
+            }
         }
         res = requests.createDevice(payload);
 
