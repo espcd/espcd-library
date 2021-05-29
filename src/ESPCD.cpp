@@ -12,16 +12,16 @@
 #include <ArduinoJson.h>
 
 
-void ESPCD::setBaseUrl(String baseUrl) {
-    requests.setBaseUrl(baseUrl);
+void ESPCD::setUrl(String url) {
+    requests.setUrl(url);
 }
 
 void ESPCD::setProductId(String productId) {
     this->productId = productId;
 }
 
-void ESPCD::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
-    requests.setCert(certs_ca_pem, certs_ca_pem_len);
+void ESPCD::setCert(unsigned char* cert, unsigned int certLen) {
+    requests.setCert(cert, certLen);
 }
 
 String ESPCD::getModel() {

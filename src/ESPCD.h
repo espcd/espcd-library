@@ -27,14 +27,14 @@
 class ESPCD {
   public:
     ESPCD() {}
-    void setBaseUrl(String baseUrl);
+    void setUrl(String url);
     void setProductId(String productId);
-    void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
+    void setCert(unsigned char* cert, unsigned int certLen);
     void setup();
     void loop();
     WebServerClass& getServer();
   private:
-    String baseUrl;
+    String url;
     bool secure;
     String productId;
     long previousMillis = 0;

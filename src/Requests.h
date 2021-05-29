@@ -18,8 +18,8 @@ class Requests {
 public:
     Requests() {}
 
-    void setBaseUrl(String baseUrl);
-    void setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len);
+    void setUrl(String url);
+    void setCert(unsigned char* cert, unsigned int certLen);
 
     void setup();
     std::unique_ptr<WiFiClient> getClient();
@@ -38,10 +38,10 @@ public:
     Response createDevice(DynamicJsonDocument payload);
     Response patchDevice(String deviceId, DynamicJsonDocument payload);
 private:
-    String baseUrl;
+    String url;
     bool secure;
-    unsigned char* certs_ca_pem;
-    unsigned int certs_ca_pem_len;
+    unsigned char* cert;
+    unsigned int certLen;
 
     void syncTime();
 };

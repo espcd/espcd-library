@@ -8,17 +8,17 @@
 #endif
 
 
-void Requests::setBaseUrl(String baseUrl) {
-    if (baseUrl.endsWith("/")) {
-        baseUrl = baseUrl.substring(0, baseUrl.length()-1);
+void Requests::setUrl(String url) {
+    if (url.endsWith("/")) {
+        url = url.substring(0, url.length()-1);
     }
-    this->baseUrl = baseUrl;
-    this->secure = this->baseUrl.startsWith("https") ? true : false;
+    this->url = url;
+    this->secure = this->url.startsWith("https") ? true : false;
 }
 
-void Requests::setCert(unsigned char* certs_ca_pem, unsigned int certs_ca_pem_len) {
-    this->certs_ca_pem = certs_ca_pem;
-    this->certs_ca_pem_len = certs_ca_pem_len;
+void Requests::setCert(unsigned char* cert, unsigned int certLen) {
+    this->cert = cert;
+    this->certLen = certLen;
 }
 
 void Requests::setup() {
@@ -51,9 +51,9 @@ std::unique_ptr<WiFiClient> Requests::getClient() {
     if (this->secure) {
         std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
 #if defined(ARDUINO_ARCH_ESP32)
-        secureClient->setCACert((const char *) this->certs_ca_pem);
+        secureClient->setCACert((const char *) this->cert);
 #elif defined(ARDUINO_ARCH_ESP8266)
-        secureClient->setCACert(this->certs_ca_pem, this->certs_ca_pem_len);
+        secureClient->setCACert(this->cert, this->certLen);
 #endif
         secureClient->setTimeout(12);
         client = std::move(secureClient);
@@ -92,7 +92,7 @@ String Requests::getRedirectedUrl(String url) {
 }
 
 String Requests::getUpdateUrl(String firmwareId) {
-    return this->baseUrl + "/firmwares/" + firmwareId + "/content";
+    return this->url + "/firmwares/" + firmwareId + "/content";
 }
 
 Response Requests::sendRequest(String method, String url) {
@@ -156,25 +156,25 @@ Response Requests::patchRequest(String url, DynamicJsonDocument payload) {
 }
 
 Response Requests::getDevice(String id) {
-    String url = this->baseUrl + "/devices/" + id;
+    String url = this->url + "/devices/" + id;
     Response response = this->getRequest(url);
     return response;
 }
 
 Response Requests::getProduct(String id) {
-    String url = this->baseUrl + "/products/" + id;
+    String url = this->url + "/products/" + id;
     Response response = this->getRequest(url);
     return response;
 }
 
 Response Requests::createDevice(DynamicJsonDocument payload) {
-    String url = this->baseUrl + "/devices";
+    String url = this->url + "/devices";
     Response response = this->postRequest(url, payload);
     return response;
 }
 
 Response Requests::patchDevice(String deviceId, DynamicJsonDocument payload) {
-    String url = this->baseUrl + "/devices/" + deviceId;
+    String url = this->url + "/devices/" + deviceId;
     Response response = this->patchRequest(url, payload);
     return response;
 }
