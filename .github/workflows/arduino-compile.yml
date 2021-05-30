@@ -29,6 +29,10 @@ jobs:
         run: |
           arduino-cli core update-index --additional-urls ${{ matrix.additional-urls }}
           arduino-cli core install ${{ matrix.platform }} --additional-urls ${{ matrix.additional-urls }}
+      - name: Add repo to arduino libraries
+        run: |
+          mkdir -p ~/Arduino/libraries
+          ln -s $PWD ~/Arduino/libraries
       - name: Install dependencies
         run: |
           arduino-cli lib install AutoConnect
