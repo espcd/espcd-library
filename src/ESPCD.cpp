@@ -103,6 +103,7 @@ void ESPCD::setup() {
     config.reconnectInterval = 6;
 #if defined(ARDUINO_ARCH_ESP8266)
     config.boundaryOffset = sizeof(EEPROM_CONFIG_t);
+    this->memory.setOffset(config.boundaryOffset);
 #endif
     this->portal.config(config);
 

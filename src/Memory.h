@@ -18,11 +18,13 @@ typedef struct {
 
 class Memory {
   public:
+    void setOffset(int offset);
     String getFirmwareId();
     void setFirmwareId(String id);
     String getDeviceId();
     void setDeviceId(String id);
   private:
+    int offset = 0;
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences pref;
 #endif
