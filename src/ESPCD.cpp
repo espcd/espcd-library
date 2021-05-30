@@ -8,7 +8,6 @@
 #include <ESP8266HTTPClient.h>
 #endif
 
-#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 
 
@@ -20,8 +19,8 @@ void ESPCD::setProductId(String productId) {
     this->productId = productId;
 }
 
-void ESPCD::setCert(unsigned char* cert, unsigned int certLen) {
-    requests.setCert(cert, certLen);
+void ESPCD::setCert(char* cert) {
+    requests.setCert(cert);
 }
 
 String ESPCD::getModel() {
@@ -70,7 +69,7 @@ void ESPCD::update(String firmwareId) {
 #if defined(ARDUINO_ARCH_ESP32)
     url = requests.getRedirectedUrl(url);
 #elif defined(ARDUINO_ARCH_ESP8266)
-    HttpUpdateClass.setFollowRedirects(true);
+    HttpUpdateClass.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 #endif
     HttpUpdateClass.rebootOnUpdate(false);
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);

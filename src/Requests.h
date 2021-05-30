@@ -19,7 +19,7 @@ public:
     Requests() {}
 
     void setUrl(String url);
-    void setCert(unsigned char* cert, unsigned int certLen);
+    void setCert(char* cert);
 
     void setup();
     std::unique_ptr<WiFiClient> getClient();
@@ -40,8 +40,7 @@ public:
 private:
     String url;
     bool secure;
-    unsigned char* cert;
-    unsigned int certLen;
+    char* cert;
 
     void syncTime();
 };

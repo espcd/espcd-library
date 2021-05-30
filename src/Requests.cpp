@@ -16,9 +16,8 @@ void Requests::setUrl(String url) {
     this->secure = this->url.startsWith("https") ? true : false;
 }
 
-void Requests::setCert(unsigned char* cert, unsigned int certLen) {
+void Requests::setCert(char* cert) {
     this->cert = cert;
-    this->certLen = certLen;
 }
 
 void Requests::setup() {
@@ -53,7 +52,8 @@ std::unique_ptr<WiFiClient> Requests::getClient() {
 #if defined(ARDUINO_ARCH_ESP32)
         secureClient->setCACert((const char *) this->cert);
 #elif defined(ARDUINO_ARCH_ESP8266)
-        secureClient->setCACert(this->cert, this->certLen);
+        X509List cert(this->cert);
+        secureClient->setTrustAnchors(&cert);
 #endif
         secureClient->setTimeout(12);
         client = std::move(secureClient);
