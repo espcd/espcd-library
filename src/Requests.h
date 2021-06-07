@@ -35,6 +35,7 @@ public:
 
     Response getDevice(String id);
     Response getProduct(String id);
+    Response getProductFirmware(String id, String fqbn);
     Response createDevice(DynamicJsonDocument payload);
     Response patchDevice(String deviceId, DynamicJsonDocument payload);
 private:

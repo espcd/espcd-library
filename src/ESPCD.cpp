@@ -23,14 +23,14 @@ void ESPCD::setCert(char* cert) {
     requests.setCert(cert);
 }
 
-String ESPCD::getModel() {
-    String model = "unknown";
+String ESPCD::getDefaultFqbn() {
+    String fqbn = "unknown";
 #if defined(ARDUINO_ARCH_ESP32)
-    model = "esp32";
+    fqbn = "esp32:esp32:esp32";
 #elif defined(ARDUINO_ARCH_ESP8266)
-    model = "esp8266";
+    fqbn = "esp8266:esp8266:generic";
 #endif
-    return model;
+    return fqbn;
 }
 
 Response ESPCD::getOrCreateDevice() {
@@ -40,7 +40,7 @@ Response ESPCD::getOrCreateDevice() {
     Response res = requests.getDevice(deviceId);
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
         DynamicJsonDocument payload(2048);
-        payload["model"] = this->getModel();
+        payload["fqbn"] = this->getDefaultFqbn();
         if (this->productId) {
             // check if product id is valid, if not remove it
             if (requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
@@ -132,6 +132,7 @@ void ESPCD::loop() {
                 return;
             }
             DynamicJsonDocument device = deviceResponse.getJson();
+            String fqbn = device["fqbn"].as<String>();
             String productId = device["product_id"].as<String>();
             if (productId == "null") {
                 Serial.println("Device product not set");
@@ -140,25 +141,39 @@ void ESPCD::loop() {
 
             // get product from the backend that is assiciated with this device
             Response productResponse = requests.getProduct(productId);
-            if (!deviceResponse.ok()) {
+            if (!productResponse.ok()) {
                 Serial.println("Product request failed");
                 return;
             }
             DynamicJsonDocument product = productResponse.getJson();
-            String availableFirmware = product["firmware_id"].as<String>();
             bool autoUpdate = product["auto_update"].as<bool>();
+            if (!autoUpdate) {
+                Serial.println("Autoupdate disabled");
+                return;
+            }
+
+            Response productFirmwareResponse = requests.getProductFirmware(productId, fqbn);
+            if (!productFirmwareResponse.ok()) {
+                Serial.println("Product firmware request failed");
+                return;
+            }
+            DynamicJsonDocument firmware = productFirmwareResponse.getJson();
+            String availableFirmware = firmware["id"].as<String>();
             Serial.println("availableFirmware: " + availableFirmware);
-            Serial.print("autoUpdate: ");
-            Serial.println(autoUpdate ? "true" : "false");
+            if (availableFirmware == "null") {
+                Serial.println("No firmware available");
+                return;
+            }
 
             String firmwareId = memory.getFirmwareId();
             Serial.println("localFirmware: " + firmwareId);
-
-            // check if update possible
-            if (autoUpdate && availableFirmware != "null" && firmwareId != availableFirmware) {
-                Serial.println("Do update...");
-                this->update(availableFirmware);
+            if (firmwareId == availableFirmware) {
+                Serial.println("Latest firmware already installed");
+                return;
             }
+
+            Serial.println("Update in progress...");
+            this->update(availableFirmware);
         }
     }
     this->portal.handleClient();

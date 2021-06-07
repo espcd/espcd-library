@@ -42,7 +42,7 @@ class ESPCD {
     Requests requests;
     Memory memory;
     
-    String getModel();
+    String getDefaultFqbn();
     void update(String firmwareId);
     
     Response getOrCreateDevice();

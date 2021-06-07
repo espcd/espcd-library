@@ -167,6 +167,12 @@ Response Requests::getProduct(String id) {
     return response;
 }
 
+Response Requests::getProductFirmware(String id, String fqbn) {
+    String url = this->url + "/products/" + id + "/firmware/" + fqbn;
+    Response response = this->getRequest(url);
+    return response;
+}
+
 Response Requests::createDevice(DynamicJsonDocument payload) {
     String url = this->url + "/devices";
     Response response = this->postRequest(url, payload);
