@@ -21,13 +21,12 @@
 
 #include <AutoConnect.h>
 
-#define VERSION_CHECK_INTERVAL 5000
-
 
 class ESPCD {
   public:
     ESPCD() {}
     void setUrl(String url);
+    void setInterval(int milliseconds);
     void setProductId(String productId);
     void setCert(char* cert);
     void setup();
@@ -35,6 +34,7 @@ class ESPCD {
     WebServerClass& getServer();
   private:
     String url;
+    int interval = 60000;
     bool secure;
     String productId;
     long previousMillis = 0;

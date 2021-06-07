@@ -15,6 +15,10 @@ void ESPCD::setUrl(String url) {
     requests.setUrl(url);
 }
 
+void ESPCD::setInterval(int milliseconds) {
+    this->interval = milliseconds;
+}
+
 void ESPCD::setProductId(String productId) {
     this->productId = productId;
 }
@@ -121,8 +125,9 @@ WebServerClass& ESPCD::getServer() {
 
 void ESPCD::loop() {
     if (WiFi.status() == WL_CONNECTED) {
-        long currentMillis = millis();
-        if (currentMillis - this->previousMillis > VERSION_CHECK_INTERVAL) {
+        long currentMillis = millis() + this->interval;  // increase millis to do update check directly after boot
+
+        if (currentMillis - this->previousMillis >= this->interval) {
             this->previousMillis = currentMillis;
 
             // get device from the backend or create a new one if it does not exist
