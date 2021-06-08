@@ -16,6 +16,10 @@ void Requests::setUrl(String url) {
     this->secure = this->url.startsWith("https") ? true : false;
 }
 
+void Requests::setApiKey(String apiKey) {
+    this->apiKey = apiKey;
+}
+
 void Requests::setCert(char* cert) {
     this->cert = cert;
 }
@@ -76,9 +80,12 @@ String Requests::getRedirectedUrl(String url) {
             http.collectHeaders(headerKeys, numberOfHeaders);
             httpCode = http.sendRequest("HEAD");
             if (httpCode > 0) {
-                Serial.printf("HTTP code: %d\n", httpCode);
+                if (httpCode >= 400) {
+                    Serial.printf("HTTP code: %d\n", httpCode);
+                }
                 if (httpCode == HTTP_CODE_FOUND) {
                     url = http.header("Location");
+                    url += "?api_key=" + this->apiKey;
                 }
             } else {
                 Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -92,7 +99,7 @@ String Requests::getRedirectedUrl(String url) {
 }
 
 String Requests::getUpdateUrl(String firmwareId) {
-    return this->url + "/firmwares/" + firmwareId + "/content";
+    return this->url + "/firmwares/" + firmwareId + "/content?api_key=" + this->apiKey;
 }
 
 Response Requests::sendRequest(String method, String url) {
@@ -106,8 +113,9 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument pa
     HTTPClient http;
     http.useHTTP10(true);
 
-    int httpCode = -1;
+    url += "?api_key=" + this->apiKey;
 
+    int httpCode = -1;
     std::unique_ptr<WiFiClient> client = this->getClient();
     if (http.begin(*client, url)) {
         String payloadStr;
@@ -125,7 +133,9 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument pa
         }
 
         if (httpCode > 0) {
-            Serial.printf("HTTP code: %d\n", httpCode);
+            if (httpCode >= 400) {
+                Serial.printf("HTTP code: %d\n", httpCode);
+            }
             if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
                 deserializeJson(json, http.getStream());
             }

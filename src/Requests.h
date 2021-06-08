@@ -19,6 +19,7 @@ public:
     Requests() {}
 
     void setUrl(String url);
+    void setApiKey(String apiKey);
     void setCert(char* cert);
 
     void setup();
@@ -40,6 +41,7 @@ public:
     Response patchDevice(String deviceId, DynamicJsonDocument payload);
 private:
     String url;
+    String apiKey;
     bool secure;
     char* cert;
 

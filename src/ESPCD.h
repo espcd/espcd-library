@@ -26,6 +26,7 @@ class ESPCD {
   public:
     ESPCD() {}
     void setUrl(String url);
+    void setApiKey(String apiKey);
     void setInterval(int milliseconds);
     void setProductId(String productId);
     void setCert(char* cert);

@@ -15,6 +15,10 @@ void ESPCD::setUrl(String url) {
     requests.setUrl(url);
 }
 
+void ESPCD::setApiKey(String apiKey) {
+    requests.setApiKey(apiKey);
+}
+
 void ESPCD::setInterval(int milliseconds) {
     this->interval = milliseconds;
 }
@@ -39,7 +43,7 @@ String ESPCD::getDefaultFqbn() {
 
 Response ESPCD::getOrCreateDevice() {
     String deviceId = memory.getDeviceId();
-    Serial.println("local device id: " + deviceId);
+    Serial.println("Local device: " + deviceId);
 
     Response res = requests.getDevice(deviceId);
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
@@ -48,7 +52,7 @@ Response ESPCD::getOrCreateDevice() {
         if (this->productId) {
             // check if product id is valid, if not remove it
             if (requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
-                Serial.println("product id \"" + this->productId + "\" is invalid and therefore deleted");
+                Serial.println("Product id \"" + this->productId + "\" is invalid and therefore deleted");
                 this->productId = "";
             } else {
                 payload["product_id"] = this->productId;
@@ -130,6 +134,8 @@ void ESPCD::loop() {
         if (currentMillis - this->previousMillis >= this->interval) {
             this->previousMillis = currentMillis;
 
+            Serial.println("");
+
             // get device from the backend or create a new one if it does not exist
             Response deviceResponse = this->getOrCreateDevice();
             if (!deviceResponse.ok()) {
@@ -153,9 +159,12 @@ void ESPCD::loop() {
             DynamicJsonDocument product = productResponse.getJson();
             bool autoUpdate = product["auto_update"].as<bool>();
             if (!autoUpdate) {
-                Serial.println("Autoupdate disabled");
+                Serial.println("Auto update disabled");
                 return;
             }
+
+            String firmwareId = memory.getFirmwareId();
+            Serial.println("Local firmware: " + firmwareId);
 
             Response productFirmwareResponse = requests.getProductFirmware(productId, fqbn);
             if (!productFirmwareResponse.ok()) {
@@ -163,22 +172,20 @@ void ESPCD::loop() {
                 return;
             }
             DynamicJsonDocument firmware = productFirmwareResponse.getJson();
-            String availableFirmware = firmware["id"].as<String>();
-            Serial.println("availableFirmware: " + availableFirmware);
-            if (availableFirmware == "null") {
+            String remoteFirmware = firmware["id"].as<String>();
+            Serial.println("Remote firmware: " + remoteFirmware);
+            if (remoteFirmware == "null") {
                 Serial.println("No firmware available");
                 return;
             }
 
-            String firmwareId = memory.getFirmwareId();
-            Serial.println("localFirmware: " + firmwareId);
-            if (firmwareId == availableFirmware) {
+            if (firmwareId == remoteFirmware) {
                 Serial.println("Latest firmware already installed");
                 return;
             }
 
             Serial.println("Update in progress...");
-            this->update(availableFirmware);
+            this->update(remoteFirmware);
         }
     }
     this->portal.handleClient();
