@@ -19,10 +19,6 @@ void ESPCD::setApiKey(String apiKey) {
     requests.setApiKey(apiKey);
 }
 
-void ESPCD::setInterval(int milliseconds) {
-    this->interval = milliseconds;
-}
-
 void ESPCD::setProductId(String productId) {
     this->productId = productId;
 }
@@ -121,6 +117,7 @@ void ESPCD::setup() {
     } else {
         Serial.println("Connection failed.");
     }
+    Serial.printf("Set default check interval to %d seconds\n", this->interval);
 }
 
 WebServerClass& ESPCD::getServer() {
@@ -129,9 +126,9 @@ WebServerClass& ESPCD::getServer() {
 
 void ESPCD::loop() {
     if (WiFi.status() == WL_CONNECTED) {
-        long currentMillis = millis() + this->interval;  // increase millis to do update check directly after boot
+        long currentMillis = millis();
 
-        if (currentMillis - this->previousMillis >= this->interval) {
+        if (this->previousMillis == 0 || currentMillis - this->previousMillis >= this->interval * 1000) {
             this->previousMillis = currentMillis;
 
             Serial.println("");
@@ -157,6 +154,11 @@ void ESPCD::loop() {
                 return;
             }
             DynamicJsonDocument product = productResponse.getJson();
+            int checkInterval = product["check_interval"].as<int>();
+            if (checkInterval != this->interval) {
+                Serial.printf("Set check interval to %d seconds\n", checkInterval);
+                this->interval = checkInterval;
+            }
             bool autoUpdate = product["auto_update"].as<bool>();
             if (!autoUpdate) {
                 Serial.println("Auto update disabled");

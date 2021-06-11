@@ -27,7 +27,6 @@ class ESPCD {
     ESPCD() {}
     void setUrl(String url);
     void setApiKey(String apiKey);
-    void setInterval(int milliseconds);
     void setProductId(String productId);
     void setCert(char* cert);
     void setup();
@@ -35,7 +34,7 @@ class ESPCD {
     WebServerClass& getServer();
   private:
     String url;
-    int interval = 60000;
+    int interval = 60;  // default check interval 60s, this is overwritten by product check_interval later
     bool secure;
     String productId;
     long previousMillis = 0;
