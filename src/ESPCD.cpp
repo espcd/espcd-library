@@ -113,6 +113,12 @@ void ESPCD::setup() {
     if (this->portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
+        // stop access point after credential input
+        if (WiFi.getMode() & WIFI_AP) {
+            WiFi.softAPdisconnect(true);
+            WiFi.enableAP(false);
+        }
+
         requests.setup();
     } else {
         Serial.println("Connection failed.");
