@@ -16,7 +16,7 @@ public:
     void setJson(DynamicJsonDocument json);
 private:
     int statusCode = -1;
-    DynamicJsonDocument json = DynamicJsonDocument(2048);
+    DynamicJsonDocument json = DynamicJsonDocument(512);
 };
 
 #endif

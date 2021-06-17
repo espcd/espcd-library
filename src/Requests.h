@@ -27,18 +27,18 @@ public:
     String getRedirectedUrl(String url);
     String getUpdateUrl(String firmwareId);
 
-    Response sendRequest(String method, String url);
-    Response sendRequest(String method, String url, DynamicJsonDocument payload);
+    Response sendRequest(String method, String url, DynamicJsonDocument responseJson);
+    Response sendRequest(String method, String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson);
 
-    Response getRequest(String url);
-    Response postRequest(String url, DynamicJsonDocument payload);
-    Response patchRequest(String url, DynamicJsonDocument payload);
+    Response getRequest(String url, DynamicJsonDocument responseJson);
+    Response postRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson);
+    Response patchRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson);
 
     Response getDevice(String id);
     Response getProduct(String id);
     Response getProductFirmware(String id, String fqbn);
-    Response createDevice(DynamicJsonDocument payload);
-    Response patchDevice(String deviceId, DynamicJsonDocument payload);
+    Response createDevice(DynamicJsonDocument requestJson);
+    Response patchDevice(String deviceId, DynamicJsonDocument requestJson);
 private:
     String url;
     String apiKey;

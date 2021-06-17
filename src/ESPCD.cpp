@@ -43,22 +43,22 @@ Response ESPCD::getOrCreateDevice() {
 
     Response res = requests.getDevice(deviceId);
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
-        DynamicJsonDocument payload(2048);
-        payload["fqbn"] = this->getDefaultFqbn();
+        DynamicJsonDocument newDevice(128);
+        newDevice["fqbn"] = this->getDefaultFqbn();
         if (this->productId) {
             // check if product id is valid, if not remove it
             if (requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
                 Serial.println("Product id \"" + this->productId + "\" is invalid and therefore deleted");
                 this->productId = "";
             } else {
-                payload["product_id"] = this->productId;
+                newDevice["product_id"] = this->productId;
             }
         }
-        res = requests.createDevice(payload);
+        res = requests.createDevice(newDevice);
 
         if (res.ok()) {
-            DynamicJsonDocument json = res.getJson();
-            deviceId = json["id"].as<String>();
+            DynamicJsonDocument device = res.getJson();
+            deviceId = device["id"].as<String>();
             memory.setDeviceId(deviceId);
             memory.setFirmwareId("null");
         }
@@ -90,9 +90,9 @@ void ESPCD::update(String firmwareId) {
 
         // change installed firmware in the backend
         String deviceId = memory.getDeviceId();
-        DynamicJsonDocument payload(2048);
-        payload["firmware_id"] = firmwareId;
-        requests.patchDevice(deviceId, payload);
+        DynamicJsonDocument devicePatch(64);
+        devicePatch["firmware_id"] = firmwareId;
+        requests.patchDevice(deviceId, devicePatch);
 
         // restart
         ESP.restart();

@@ -102,14 +102,12 @@ String Requests::getUpdateUrl(String firmwareId) {
     return this->url + "/firmwares/" + firmwareId + "/content?api_key=" + this->apiKey;
 }
 
-Response Requests::sendRequest(String method, String url) {
-    DynamicJsonDocument payload(2048);
-    return this->sendRequest(method, url, payload);
+Response Requests::sendRequest(String method, String url, DynamicJsonDocument responseJson) {
+    DynamicJsonDocument requestJson(0);
+    return this->sendRequest(method, url, requestJson, responseJson);
 }
 
-Response Requests::sendRequest(String method, String url, DynamicJsonDocument payload) {
-    DynamicJsonDocument json(2048);
-
+Response Requests::sendRequest(String method, String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
     HTTPClient http;
     http.useHTTP10(true);
 
@@ -118,18 +116,18 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument pa
     int httpCode = -1;
     std::unique_ptr<WiFiClient> client = this->getClient();
     if (http.begin(*client, url)) {
-        String payloadStr;
+        String requestStr;
         if (method == "POST" || method == "PATCH") {
             http.addHeader("Content-Type", "application/json");
-            serializeJson(payload, payloadStr);
+            serializeJson(requestJson, requestStr);
         }
         
         if (method == "GET") {
             httpCode = http.GET();
         } else if (method == "POST") {
-            httpCode = http.POST(payloadStr);
+            httpCode = http.POST(requestStr);
         } else if (method == "PATCH") {
-            httpCode = http.PATCH(payloadStr);
+            httpCode = http.PATCH(requestStr);
         }
 
         if (httpCode > 0) {
@@ -137,7 +135,7 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument pa
                 Serial.printf("HTTP code: %d\n", httpCode);
             }
             if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-                deserializeJson(json, http.getStream());
+                deserializeJson(responseJson, http.getStream());
             }
         } else {
             Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
@@ -149,48 +147,53 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument pa
 
     Response r;
     r.setStatusCode(httpCode);
-    r.setJson(json);
+    r.setJson(responseJson);
     return r;
 }
 
-Response Requests::getRequest(String url) {
-    return this->sendRequest("GET", url);
+Response Requests::getRequest(String url, DynamicJsonDocument responseJson) {
+    return this->sendRequest("GET", url, responseJson);
 }
 
-Response Requests::postRequest(String url, DynamicJsonDocument payload) {
-    return this->sendRequest("POST", url, payload);
+Response Requests::postRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
+    return this->sendRequest("POST", url, requestJson, responseJson);
 }
 
-Response Requests::patchRequest(String url, DynamicJsonDocument payload) {
-    return this->sendRequest("PATCH", url, payload);
+Response Requests::patchRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
+    return this->sendRequest("PATCH", url, requestJson, responseJson);
 }
 
 Response Requests::getDevice(String id) {
     String url = this->url + "/devices/" + id;
-    Response response = this->getRequest(url);
+    DynamicJsonDocument responseJson(768);
+    Response response = this->getRequest(url, responseJson);
     return response;
 }
 
 Response Requests::getProduct(String id) {
     String url = this->url + "/products/" + id;
-    Response response = this->getRequest(url);
+    DynamicJsonDocument responseJson(768);
+    Response response = this->getRequest(url, responseJson);
     return response;
 }
 
 Response Requests::getProductFirmware(String id, String fqbn) {
     String url = this->url + "/products/" + id + "/firmware/" + fqbn;
-    Response response = this->getRequest(url);
+    DynamicJsonDocument responseJson(768);
+    Response response = this->getRequest(url, responseJson);
     return response;
 }
 
-Response Requests::createDevice(DynamicJsonDocument payload) {
+Response Requests::createDevice(DynamicJsonDocument requestJson) {
     String url = this->url + "/devices";
-    Response response = this->postRequest(url, payload);
+    DynamicJsonDocument responseJson(768);
+    Response response = this->postRequest(url, requestJson, responseJson);
     return response;
 }
 
-Response Requests::patchDevice(String deviceId, DynamicJsonDocument payload) {
+Response Requests::patchDevice(String deviceId, DynamicJsonDocument requestJson) {
     String url = this->url + "/devices/" + deviceId;
-    Response response = this->patchRequest(url, payload);
+    DynamicJsonDocument responseJson(768);
+    Response response = this->patchRequest(url, requestJson, responseJson);
     return response;
 }
