@@ -102,12 +102,12 @@ String Requests::getUpdateUrl(String firmwareId) {
     return this->url + "/firmwares/" + firmwareId + "/content?api_key=" + this->apiKey;
 }
 
-Response Requests::sendRequest(String method, String url, DynamicJsonDocument responseJson) {
+Response Requests::sendRequest(String method, String url, DynamicJsonDocument &responseJson) {
     DynamicJsonDocument requestJson(0);
     return this->sendRequest(method, url, requestJson, responseJson);
 }
 
-Response Requests::sendRequest(String method, String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
+Response Requests::sendRequest(String method, String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson) {
     HTTPClient http;
     http.useHTTP10(true);
 
@@ -151,15 +151,15 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument re
     return r;
 }
 
-Response Requests::getRequest(String url, DynamicJsonDocument responseJson) {
+Response Requests::getRequest(String url, DynamicJsonDocument &responseJson) {
     return this->sendRequest("GET", url, responseJson);
 }
 
-Response Requests::postRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
+Response Requests::postRequest(String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson) {
     return this->sendRequest("POST", url, requestJson, responseJson);
 }
 
-Response Requests::patchRequest(String url, DynamicJsonDocument requestJson, DynamicJsonDocument responseJson) {
+Response Requests::patchRequest(String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson) {
     return this->sendRequest("PATCH", url, requestJson, responseJson);
 }
 
@@ -184,14 +184,14 @@ Response Requests::getProductFirmware(String id, String fqbn) {
     return response;
 }
 
-Response Requests::createDevice(DynamicJsonDocument requestJson) {
+Response Requests::createDevice(DynamicJsonDocument &requestJson) {
     String url = this->url + "/devices";
     DynamicJsonDocument responseJson(768);
     Response response = this->postRequest(url, requestJson, responseJson);
     return response;
 }
 
-Response Requests::patchDevice(String deviceId, DynamicJsonDocument requestJson) {
+Response Requests::patchDevice(String deviceId, DynamicJsonDocument &requestJson) {
     String url = this->url + "/devices/" + deviceId;
     DynamicJsonDocument responseJson(768);
     Response response = this->patchRequest(url, requestJson, responseJson);

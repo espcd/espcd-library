@@ -10,11 +10,11 @@ void Response::setStatusCode(int statusCode) {
 }
 
 DynamicJsonDocument Response::getJson() {
-    return this->json;
+    return *this->json;
 }
 
-void Response::setJson(DynamicJsonDocument json) {
-    this->json = json;
+void Response::setJson(DynamicJsonDocument &json) {
+    this->json = &json;
 }
 
 bool Response::ok() {

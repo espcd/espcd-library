@@ -13,10 +13,10 @@ public:
     void setStatusCode(int statusCode);
 
     DynamicJsonDocument getJson();
-    void setJson(DynamicJsonDocument json);
+    void setJson(DynamicJsonDocument &json);
 private:
     int statusCode = -1;
-    DynamicJsonDocument json = DynamicJsonDocument(512);
+    DynamicJsonDocument* json;
 };
 
 #endif
