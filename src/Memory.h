@@ -27,14 +27,16 @@ class Memory {
     int offset = 0;
 #if defined(ARDUINO_ARCH_ESP32)
     Preferences pref;
+#elif defined(ARDUINO_ARCH_ESP8266)
+    EEPROM_CONFIG_t eepromConfig;
 #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
     String getNvsValue(const char* key);
     void setNvsValue(const char* key, String value);
 #elif defined(ARDUINO_ARCH_ESP8266)
-    String getEepromValue(String key);
-    void setEepromValue(String key, String value, size_t size);
+    void readEepromConfig();
+    void writeEepromConfig();
 #endif
 };
 

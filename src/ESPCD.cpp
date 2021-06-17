@@ -106,9 +106,10 @@ void ESPCD::setup() {
     config.reconnectInterval = 6;
 #if defined(ARDUINO_ARCH_ESP8266)
     config.boundaryOffset = sizeof(EEPROM_CONFIG_t);
-    this->memory.setOffset(config.boundaryOffset);
 #endif
     this->portal.config(config);
+
+    this->memory.setOffset(this->portal.getEEPROMUsedSize());
 
     if (this->portal.begin()) {
         Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
