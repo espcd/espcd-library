@@ -7,7 +7,7 @@ void Memory::setOffset(int offset) {
 #if defined(ARDUINO_ARCH_ESP32)
 String Memory::getNvsValue(const char* key) {
     this->pref.begin(IDENTIFIER, false);
-    String value = this->pref.getString(key, "");
+    String value = this->pref.getString(key, "null");
     this->pref.end();
     return value;
 }
@@ -39,10 +39,7 @@ String Memory::getFirmwareId() {
 #elif defined(ARDUINO_ARCH_ESP8266)
     this->readEepromConfig();
     String value = String(eepromConfig.firmwareId);
-    if (value == "") {
-        value = "null";
-    }
-    return value;
+    return value == "" ? "null" : value;
 #endif
 }
 
@@ -61,10 +58,7 @@ String Memory::getDeviceId() {
 #elif defined(ARDUINO_ARCH_ESP8266)
     this->readEepromConfig();
     String value = String(eepromConfig.deviceId);
-    if (value == "") {
-        value = "null";
-    }
-    return value;
+    return value == "" ? "null" : value;
 #endif
 }
 

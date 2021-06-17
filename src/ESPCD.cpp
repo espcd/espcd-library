@@ -56,11 +56,12 @@ Response ESPCD::getOrCreateDevice() {
         }
         res = requests.createDevice(payload);
 
-        DynamicJsonDocument json = res.getJson();
-        String deviceId = json["id"].as<String>();
-        
-        memory.setDeviceId(deviceId);
-        memory.setFirmwareId("");
+        if (res.ok()) {
+            DynamicJsonDocument json = res.getJson();
+            deviceId = json["id"].as<String>();
+            memory.setDeviceId(deviceId);
+            memory.setFirmwareId("null");
+        }
     }
     return res;
 }
