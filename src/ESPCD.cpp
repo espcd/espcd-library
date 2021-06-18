@@ -12,11 +12,11 @@
 
 
 void ESPCD::setUrl(String url) {
-    requests.setUrl(url);
+    this->requests.setUrl(url);
 }
 
 void ESPCD::setApiKey(String apiKey) {
-    requests.setApiKey(apiKey);
+    this->requests.setApiKey(apiKey);
 }
 
 void ESPCD::setProductId(String productId) {
@@ -24,7 +24,7 @@ void ESPCD::setProductId(String productId) {
 }
 
 void ESPCD::setCert(char* cert) {
-    requests.setCert(cert);
+    this->requests.setCert(cert);
 }
 
 String ESPCD::getDefaultFqbn() {
@@ -38,46 +38,47 @@ String ESPCD::getDefaultFqbn() {
 }
 
 Response ESPCD::getOrCreateDevice() {
-    String deviceId = memory.getDeviceId();
+    String deviceId = this->memory.getDeviceId();
     Serial.println("Local device: " + deviceId);
 
-    Response res = requests.getDevice(deviceId);
+    Response res = this->requests.getDevice(deviceId);
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
         DynamicJsonDocument newDevice(128);
         newDevice["fqbn"] = this->getDefaultFqbn();
         if (this->productId) {
             // check if product id is valid, if not remove it
-            if (requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
+            if (this->requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
                 Serial.println("Product id \"" + this->productId + "\" is invalid and therefore deleted");
                 this->productId = "";
             } else {
                 newDevice["product_id"] = this->productId;
             }
         }
-        res = requests.createDevice(newDevice);
+        res = this->requests.createDevice(newDevice);
 
         if (res.ok()) {
             DynamicJsonDocument device = res.getJson();
             deviceId = device["id"].as<String>();
-            memory.setDeviceId(deviceId);
-            memory.setFirmwareId("null");
+            this->memory.setDeviceId(deviceId);
+            this->memory.setFirmwareId("null");
         }
     }
     return res;
 }
 
 void ESPCD::update(String firmwareId) {
-    String url = requests.getUpdateUrl(firmwareId);
+    String url = this->requests.getUpdateUrl(firmwareId);
 
-    std::unique_ptr<WiFiClient> client = requests.getClient();
-    // setFollowRedirects is supported in arduino-esp32 version 2.0.0 which is currently not released
+    std::unique_ptr<WiFiClient> client = this->requests.getClient();
 #if defined(ARDUINO_ARCH_ESP32)
-    url = requests.getRedirectedUrl(url);
+    // setFollowRedirects is supported in arduino-esp32 version 2.0.0 which is currently not released
+    url = this->requests.getRedirectedUrl(url);
 #elif defined(ARDUINO_ARCH_ESP8266)
     HttpUpdateClass.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 #endif
     HttpUpdateClass.rebootOnUpdate(false);
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
+    client->stop();
     switch (ret) {
     case HTTP_UPDATE_FAILED:
         Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
@@ -86,13 +87,13 @@ void ESPCD::update(String firmwareId) {
         Serial.println("HTTP_UPDATE_OK");
 
         // change installed firmware in the local memory
-        memory.setFirmwareId(firmwareId);
+        this->memory.setFirmwareId(firmwareId);
 
         // change installed firmware in the backend
-        String deviceId = memory.getDeviceId();
+        String deviceId = this->memory.getDeviceId();
         DynamicJsonDocument devicePatch(64);
         devicePatch["firmware_id"] = firmwareId;
-        requests.patchDevice(deviceId, devicePatch);
+        this->requests.patchDevice(deviceId, devicePatch);
 
         // restart
         ESP.restart();
@@ -121,7 +122,7 @@ void ESPCD::setup() {
             WiFi.enableAP(false);
         }
 
-        requests.setup();
+        this->requests.setup();
     } else {
         Serial.println("Connection failed.");
     }
@@ -156,7 +157,7 @@ void ESPCD::loop() {
             }
 
             // get product from the backend that is assiciated with this device
-            Response productResponse = requests.getProduct(productId);
+            Response productResponse = this->requests.getProduct(productId);
             if (!productResponse.ok()) {
                 Serial.println("Product request failed");
                 return;
@@ -173,10 +174,10 @@ void ESPCD::loop() {
                 return;
             }
 
-            String firmwareId = memory.getFirmwareId();
+            String firmwareId = this->memory.getFirmwareId();
             Serial.println("Local firmware: " + firmwareId);
 
-            Response productFirmwareResponse = requests.getProductFirmware(productId, fqbn);
+            Response productFirmwareResponse = this->requests.getProductFirmware(productId, fqbn);
             if (!productFirmwareResponse.ok()) {
                 Serial.println("Product firmware request failed");
                 return;
