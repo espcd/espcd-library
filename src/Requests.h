@@ -27,12 +27,12 @@ public:
     String getRedirectedUrl(String url);
     String getUpdateUrl(String firmwareId);
 
-    Response sendRequest(String method, String url, DynamicJsonDocument &responseJson);
-    Response sendRequest(String method, String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson);
+    Response sendRequest(String method, String url);
+    Response sendRequest(String method, String url, DynamicJsonDocument &requestJson);
 
-    Response getRequest(String url, DynamicJsonDocument &responseJson);
-    Response postRequest(String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson);
-    Response patchRequest(String url, DynamicJsonDocument &requestJson, DynamicJsonDocument &responseJson);
+    Response getRequest(String url);
+    Response postRequest(String url, DynamicJsonDocument &requestJson);
+    Response patchRequest(String url, DynamicJsonDocument &requestJson);
 
     Response getDevice(String id);
     Response getProduct(String id);

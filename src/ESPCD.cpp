@@ -57,7 +57,9 @@ Response ESPCD::getOrCreateDevice() {
         res = this->requests.createDevice(newDevice);
 
         if (res.ok()) {
-            DynamicJsonDocument device = res.getJson();
+            DynamicJsonDocument device(768);
+            deserializeJson(device, res.getBody());
+
             deviceId = device["id"].as<String>();
             this->memory.setDeviceId(deviceId);
             this->memory.setFirmwareId("null");
@@ -148,7 +150,9 @@ void ESPCD::loop() {
                 Serial.println("Device request failed");
                 return;
             }
-            DynamicJsonDocument device = deviceResponse.getJson();
+            DynamicJsonDocument device(768);
+            deserializeJson(device, deviceResponse.getBody());
+
             String fqbn = device["fqbn"].as<String>();
             String productId = device["product_id"].as<String>();
             if (productId == "null") {
@@ -162,7 +166,8 @@ void ESPCD::loop() {
                 Serial.println("Product request failed");
                 return;
             }
-            DynamicJsonDocument product = productResponse.getJson();
+            DynamicJsonDocument product(768);
+            deserializeJson(product, productResponse.getBody());
             int checkInterval = product["check_interval"].as<int>();
             if (checkInterval != this->interval) {
                 Serial.printf("Set check interval to %d seconds\n", checkInterval);
@@ -182,7 +187,8 @@ void ESPCD::loop() {
                 Serial.println("Product firmware request failed");
                 return;
             }
-            DynamicJsonDocument firmware = productFirmwareResponse.getJson();
+            DynamicJsonDocument firmware(768);
+            deserializeJson(firmware, productFirmwareResponse.getBody());
             String remoteFirmware = firmware["id"].as<String>();
             Serial.println("Remote firmware: " + remoteFirmware);
             if (remoteFirmware == "null") {

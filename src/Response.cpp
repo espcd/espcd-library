@@ -9,12 +9,12 @@ void Response::setStatusCode(int statusCode) {
     this->statusCode = statusCode;
 }
 
-DynamicJsonDocument Response::getJson() {
-    return *this->json;
+String Response::getBody() {
+    return this->body;
 }
 
-void Response::setJson(DynamicJsonDocument &json) {
-    this->json = &json;
+void Response::setBody(String body) {
+    this->body = body;
 }
 
 bool Response::ok() {

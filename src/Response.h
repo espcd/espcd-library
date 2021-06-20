@@ -12,11 +12,11 @@ public:
     int getStatusCode();
     void setStatusCode(int statusCode);
 
-    DynamicJsonDocument getJson();
-    void setJson(DynamicJsonDocument &json);
+    String getBody();
+    void setBody(String body);
 private:
     int statusCode = -1;
-    DynamicJsonDocument* json;
+    String body;
 };
 
 #endif
