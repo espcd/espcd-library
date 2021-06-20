@@ -97,7 +97,6 @@ void ESPCD::update(String firmwareId) {
         devicePatch["firmware_id"] = firmwareId;
         this->requests.patchDevice(deviceId, devicePatch);
 
-        // restart
         ESP.restart();
     }
 }

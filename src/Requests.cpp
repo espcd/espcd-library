@@ -28,6 +28,7 @@ void Requests::setup() {
     if (this->secure) {
         syncTime();
     }
+    this->initClient();
 }
 
 void Requests::syncTime() {
@@ -49,22 +50,23 @@ void Requests::syncTime() {
     Serial.print(asctime(&timeinfo));
 }
 
-std::unique_ptr<WiFiClient> Requests::getClient() {
-    std::unique_ptr<WiFiClient> client;
+void Requests::initClient() {
     if (this->secure) {
         std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
 #if defined(ARDUINO_ARCH_ESP32)
         secureClient->setCACert(this->cert);
 #elif defined(ARDUINO_ARCH_ESP8266)
-        X509List cert(this->cert);
-        secureClient->setTrustAnchors(&cert);
+        secureClient->setTrustAnchors(new X509List(this->cert));
 #endif
-        secureClient->setTimeout(12);
-        client = std::move(secureClient);
+        this->client = std::move(secureClient);
     } else {
-        client = std::unique_ptr<WiFiClient>(new WiFiClient);
+        this->client = std::unique_ptr<WiFiClient>(new WiFiClient);
     }
-    return client;
+    this->client->setTimeout(12);
+}
+
+std::unique_ptr<WiFiClient> Requests::getClient() {
+    return std::move(this->client);
 }
 
 String Requests::getRedirectedUrl(String url) {
@@ -73,10 +75,9 @@ String Requests::getRedirectedUrl(String url) {
 
     HTTPClient http;
     int httpCode = HTTP_CODE_FOUND;
-    std::unique_ptr<WiFiClient> client = this->getClient();
 
     while (httpCode == HTTP_CODE_FOUND) {
-        if (http.begin(*client, url)) {
+        if (http.begin(*this->client, url)) {
             http.collectHeaders(headerKeys, numberOfHeaders);
             httpCode = http.sendRequest("HEAD");
             if (httpCode > 0) {
@@ -95,6 +96,7 @@ String Requests::getRedirectedUrl(String url) {
             break;
         }
     }
+    http.end();
     return url;
 }
 
@@ -114,9 +116,8 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument &r
 
     int httpCode = -1;
     String body = "";
-    
-    std::unique_ptr<WiFiClient> client = this->getClient();
-    if (http.begin(*client, url)) {
+
+    if (http.begin(*this->client, url)) {
         String requestStr;
         if (method == "POST" || method == "PATCH") {
             http.addHeader("Content-Type", "application/json");
@@ -141,10 +142,10 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument &r
         } else {
             Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
         }
-        http.end();
     } else {
       Serial.printf("HTTP failed, error: unable to connect\n");
     }
+    http.end();
 
     Response r;
     r.setStatusCode(httpCode);
