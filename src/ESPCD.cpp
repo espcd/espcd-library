@@ -23,7 +23,7 @@ void ESPCD::setProductId(String productId) {
     this->productId = productId;
 }
 
-void ESPCD::setCert(char* cert) {
+void ESPCD::setCert(const char* cert) {
     this->requests.setCert(cert);
 }
 

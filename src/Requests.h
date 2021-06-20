@@ -20,7 +20,7 @@ public:
 
     void setUrl(String url);
     void setApiKey(String apiKey);
-    void setCert(char* cert);
+    void setCert(const char* cert);
 
     void setup();
     std::unique_ptr<WiFiClient> getClient();
@@ -43,7 +43,7 @@ private:
     String url;
     String apiKey;
     bool secure;
-    char* cert;
+    const char* cert;
 
     void syncTime();
 };

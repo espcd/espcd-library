@@ -28,7 +28,7 @@ class ESPCD {
     void setUrl(String url);
     void setApiKey(String apiKey);
     void setProductId(String productId);
-    void setCert(char* cert);
+    void setCert(const char* cert);
     void setup();
     void loop();
     WebServerClass& getServer();

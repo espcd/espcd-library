@@ -20,7 +20,7 @@ void Requests::setApiKey(String apiKey) {
     this->apiKey = apiKey;
 }
 
-void Requests::setCert(char* cert) {
+void Requests::setCert(const char* cert) {
     this->cert = cert;
 }
 
@@ -54,7 +54,7 @@ std::unique_ptr<WiFiClient> Requests::getClient() {
     if (this->secure) {
         std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
 #if defined(ARDUINO_ARCH_ESP32)
-        secureClient->setCACert((const char *) this->cert);
+        secureClient->setCACert(this->cert);
 #elif defined(ARDUINO_ARCH_ESP8266)
         X509List cert(this->cert);
         secureClient->setTrustAnchors(&cert);
