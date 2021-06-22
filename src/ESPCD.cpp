@@ -95,9 +95,8 @@ void ESPCD::update(String firmwareId) {
         DynamicJsonDocument devicePatch(64);
         devicePatch["firmware_id"] = firmwareId;
         this->requests.patchDevice(deviceId, devicePatch);
-
-        ESP.restart();
     }
+    ESP.restart();
 }
 
 void ESPCD::setup() {
