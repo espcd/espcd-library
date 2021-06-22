@@ -24,7 +24,7 @@ public:
 
     void setup();
     void initClient();
-    std::unique_ptr<WiFiClient> getClient();
+    WiFiClient* getClient();
     String getRedirectedUrl(String url);
     String getUpdateUrl(String firmwareId);
 
@@ -45,7 +45,7 @@ private:
     String apiKey;
     bool secure;
     const char* cert;
-    std::unique_ptr<WiFiClient> client;
+    WiFiClient* client;
 
     void syncTime();
 };

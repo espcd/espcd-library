@@ -52,21 +52,21 @@ void Requests::syncTime() {
 
 void Requests::initClient() {
     if (this->secure) {
-        std::unique_ptr<WiFiClientSecure> secureClient(new WiFiClientSecure);
+        WiFiClientSecure* secureClient = new WiFiClientSecure();
 #if defined(ARDUINO_ARCH_ESP32)
         secureClient->setCACert(this->cert);
 #elif defined(ARDUINO_ARCH_ESP8266)
         secureClient->setTrustAnchors(new X509List(this->cert));
 #endif
-        this->client = std::move(secureClient);
+        this->client = dynamic_cast<WiFiClient*>(secureClient);
     } else {
-        this->client = std::unique_ptr<WiFiClient>(new WiFiClient);
+        this->client = new WiFiClient();
     }
     this->client->setTimeout(12);
 }
 
-std::unique_ptr<WiFiClient> Requests::getClient() {
-    return std::move(this->client);
+WiFiClient* Requests::getClient() {
+    return this->client;
 }
 
 String Requests::getRedirectedUrl(String url) {
@@ -86,7 +86,6 @@ String Requests::getRedirectedUrl(String url) {
                 }
                 if (httpCode == HTTP_CODE_FOUND) {
                     url = http.header("Location");
-                    url += "?api_key=" + this->apiKey;
                 }
             } else {
                 Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());

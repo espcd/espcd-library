@@ -71,7 +71,7 @@ Response ESPCD::getOrCreateDevice() {
 void ESPCD::update(String firmwareId) {
     String url = this->requests.getUpdateUrl(firmwareId);
 
-    std::unique_ptr<WiFiClient> client = this->requests.getClient();
+    WiFiClient* client = this->requests.getClient();
 #if defined(ARDUINO_ARCH_ESP32)
     // setFollowRedirects is supported in arduino-esp32 version 2.0.0 which is currently not released
     url = this->requests.getRedirectedUrl(url);
@@ -80,7 +80,6 @@ void ESPCD::update(String firmwareId) {
 #endif
     HttpUpdateClass.rebootOnUpdate(false);
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
-    client->stop();
     switch (ret) {
     case HTTP_UPDATE_FAILED:
         Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
