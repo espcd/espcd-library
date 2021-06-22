@@ -106,7 +106,9 @@ void ESPCD::setup() {
 
     AutoConnectConfig config;
     config.autoReconnect = true;
-    config.reconnectInterval = 6;
+    config.portalTimeout = 10000;
+    config.retainPortal = true;
+
 #if defined(ARDUINO_ARCH_ESP8266)
     config.boundaryOffset = sizeof(EEPROM_CONFIG_t);
 #endif
@@ -114,19 +116,24 @@ void ESPCD::setup() {
 
     this->memory.setOffset(this->portal.getEEPROMUsedSize());
 
-    if (this->portal.begin()) {
-        Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
+    while (true) {
+        if (this->portal.begin()) {
+            Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
-        // stop access point after credential input
-        if (WiFi.getMode() & WIFI_AP) {
-            WiFi.softAPdisconnect(true);
-            WiFi.enableAP(false);
+            // stop access point after credential input
+            if (WiFi.getMode() & WIFI_AP) {
+                WiFi.softAPdisconnect(true);
+                WiFi.enableAP(false);
+            }
+
+            this->requests.setup();
+
+            break;
+        } else {
+            Serial.println("Connection failed.");
         }
-
-        this->requests.setup();
-    } else {
-        Serial.println("Connection failed.");
     }
+    
     Serial.printf("Set default check interval to %d seconds\n", this->interval);
 }
 
