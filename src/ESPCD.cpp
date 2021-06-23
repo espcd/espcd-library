@@ -39,7 +39,7 @@ String ESPCD::getDefaultFqbn() {
 
 Response ESPCD::getOrCreateDevice() {
     String deviceId = this->memory.getDeviceId();
-    Serial.println("Local device: " + deviceId);
+    DEBUG_MSG("Local device: %s\n", deviceId.c_str());
 
     Response res = this->requests.getDevice(deviceId);
     if (res.getStatusCode() == HTTP_CODE_NOT_FOUND) {
@@ -48,7 +48,7 @@ Response ESPCD::getOrCreateDevice() {
         if (this->productId) {
             // check if product id is valid, if not remove it
             if (this->requests.getProduct(this->productId).getStatusCode() == HTTP_CODE_NOT_FOUND) {
-                Serial.println("Product id \"" + this->productId + "\" is invalid and therefore deleted");
+                DEBUG_MSG("Product id %s is invalid and therefore deleted\n", this->productId.c_str());
                 this->productId = "";
             } else {
                 newDevice["product_id"] = this->productId;
@@ -82,10 +82,10 @@ void ESPCD::update(String firmwareId) {
     t_httpUpdate_return ret = HttpUpdateClass.update(*client, url);
     switch (ret) {
     case HTTP_UPDATE_FAILED:
-        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
+        DEBUG_MSG("HTTP_UPDATE_FAILED Error (%d): %s\n", HttpUpdateClass.getLastError(), HttpUpdateClass.getLastErrorString().c_str());
         break;
     case HTTP_UPDATE_OK:
-        Serial.println("HTTP_UPDATE_OK");
+        DEBUG_MSG("HTTP_UPDATE_OK\n");
 
         // change installed firmware in the local memory
         this->memory.setFirmwareId(firmwareId);
@@ -100,7 +100,7 @@ void ESPCD::update(String firmwareId) {
 }
 
 void ESPCD::setup() {
-    Serial.println("Hello from setup");
+    DEBUG_MSG("Hello from setup\n");
 
     AutoConnectConfig config;
     config.autoReconnect = true;
@@ -116,7 +116,7 @@ void ESPCD::setup() {
 
     while (true) {
         if (this->portal.begin()) {
-            Serial.printf("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
+            DEBUG_MSG("WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
             // stop access point after credential input
             if (WiFi.getMode() & WIFI_AP) {
@@ -128,11 +128,11 @@ void ESPCD::setup() {
 
             break;
         } else {
-            Serial.println("Connection failed.");
+            DEBUG_MSG("Connection failed.\n");
         }
     }
     
-    Serial.printf("Set default check interval to %d seconds\n", this->interval);
+    DEBUG_MSG("Set default check interval to %d seconds\n", this->interval);
 }
 
 WebServerClass& ESPCD::getServer() {
@@ -146,12 +146,12 @@ void ESPCD::loop() {
         if (this->previousMillis == 0 || currentMillis - this->previousMillis >= this->interval * 1000) {
             this->previousMillis = currentMillis;
 
-            Serial.println("");
+            DEBUG_MSG("\n");
 
             // get device from the backend or create a new one if it does not exist
             Response deviceResponse = this->getOrCreateDevice();
             if (!deviceResponse.ok()) {
-                Serial.println("Device request failed");
+                DEBUG_MSG("Device request failed\n");
                 return;
             }
             DynamicJsonDocument device(768);
@@ -160,52 +160,52 @@ void ESPCD::loop() {
             String fqbn = device["fqbn"].as<String>();
             String productId = device["product_id"].as<String>();
             if (productId == "null") {
-                Serial.println("Device product not set");
+                DEBUG_MSG("Device product not set\n");
                 return;
             }
 
             // get product from the backend that is assiciated with this device
             Response productResponse = this->requests.getProduct(productId);
             if (!productResponse.ok()) {
-                Serial.println("Product request failed");
+                DEBUG_MSG("Product request failed\n");
                 return;
             }
             DynamicJsonDocument product(768);
             deserializeJson(product, productResponse.getBody());
             int checkInterval = product["check_interval"].as<int>();
             if (checkInterval != this->interval) {
-                Serial.printf("Set check interval to %d seconds\n", checkInterval);
+                DEBUG_MSG("Set check interval to %d seconds\n", checkInterval);
                 this->interval = checkInterval;
             }
             bool autoUpdate = product["auto_update"].as<bool>();
             if (!autoUpdate) {
-                Serial.println("Auto update disabled");
+                DEBUG_MSG("Auto update disabled\n");
                 return;
             }
 
             String firmwareId = this->memory.getFirmwareId();
-            Serial.println("Local firmware: " + firmwareId);
+            DEBUG_MSG("Local firmware: %s\n", firmwareId.c_str());
 
             Response productFirmwareResponse = this->requests.getProductFirmware(productId, fqbn);
             if (!productFirmwareResponse.ok()) {
-                Serial.println("Product firmware request failed");
+                DEBUG_MSG("Product firmware request failed");
                 return;
             }
             DynamicJsonDocument firmware(768);
             deserializeJson(firmware, productFirmwareResponse.getBody());
             String remoteFirmware = firmware["id"].as<String>();
-            Serial.println("Remote firmware: " + remoteFirmware);
+            DEBUG_MSG("Remote firmware: %s\n", remoteFirmware.c_str());
             if (remoteFirmware == "null") {
-                Serial.println("No firmware available");
+                DEBUG_MSG("No firmware available\n");
                 return;
             }
 
             if (firmwareId == remoteFirmware) {
-                Serial.println("Latest firmware already installed");
+                DEBUG_MSG("Latest firmware already installed\n");
                 return;
             }
 
-            Serial.println("Update in progress...");
+            DEBUG_MSG("Update in progress...\n");
             this->update(remoteFirmware);
         }
     }

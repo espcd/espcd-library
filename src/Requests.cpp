@@ -33,7 +33,7 @@ void Requests::setup() {
 
 void Requests::syncTime() {
     // trigger NTP time sync
-    Serial.println("Syncing NTP time...");
+    DEBUG_MSG("Syncing NTP time...\n");
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // UTC
 
     // waiting for finished sync
@@ -46,8 +46,7 @@ void Requests::syncTime() {
     // print NTP time
     struct tm timeinfo;
     gmtime_r(&now, &timeinfo);
-    Serial.print(F("Current time: "));
-    Serial.print(asctime(&timeinfo));
+    DEBUG_MSG("Current time: %s\n", asctime(&timeinfo));
 }
 
 void Requests::initClient() {
@@ -82,16 +81,16 @@ String Requests::getRedirectedUrl(String url) {
             httpCode = http.sendRequest("HEAD");
             if (httpCode > 0) {
                 if (httpCode >= 400) {
-                    Serial.printf("HTTP code: %d\n", httpCode);
+                    DEBUG_MSG("HTTP code: %d\n", httpCode);
                 }
                 if (httpCode == HTTP_CODE_FOUND) {
                     url = http.header("Location");
                 }
             } else {
-                Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
+                DEBUG_MSG("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
             }
         } else {
-            Serial.printf("HTTP failed, error: unable to connect\n");
+            DEBUG_MSG("HTTP failed, error: unable to connect\n");
             break;
         }
     }
@@ -133,16 +132,16 @@ Response Requests::sendRequest(String method, String url, DynamicJsonDocument &r
 
         if (httpCode > 0) {
             if (httpCode >= 400) {
-                Serial.printf("HTTP code: %d\n", httpCode);
+                DEBUG_MSG("HTTP code: %d\n", httpCode);
             }
             if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
                 body = http.getString();
             }
         } else {
-            Serial.printf("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
+            DEBUG_MSG("HTTP failed, error: %s\n", http.errorToString(httpCode).c_str());
         }
     } else {
-      Serial.printf("HTTP failed, error: unable to connect\n");
+      DEBUG_MSG("HTTP failed, error: unable to connect\n");
     }
     http.end();
 

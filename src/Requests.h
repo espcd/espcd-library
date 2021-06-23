@@ -1,6 +1,7 @@
 #ifndef REQUESTS_H
 #define REQUESTS_H
 
+#include "Debug.h"
 #include "Response.h"
 
 #include "Arduino.h"

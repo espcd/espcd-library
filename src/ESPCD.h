@@ -1,6 +1,7 @@
 #ifndef ESPCD_H
 #define ESPCD_H
 
+#include "Debug.h"
 #include "Requests.h"
 #include "Response.h"
 #include "Memory.h"
