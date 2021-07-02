@@ -36,6 +36,7 @@ class ESPCD {
   private:
     String url;
     int interval = 60;  // default check interval 60s, this is overwritten by product check_interval later
+    long randomisedInterval;
     bool secure;
     String productId;
     long previousMillis = 0;

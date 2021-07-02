@@ -74,7 +74,6 @@ String Requests::getRedirectedUrl(String url) {
 
     HTTPClient http;
     int httpCode = HTTP_CODE_FOUND;
-
     while (httpCode == HTTP_CODE_FOUND) {
         if (http.begin(*this->client, url)) {
             http.collectHeaders(headerKeys, numberOfHeaders);
@@ -108,13 +107,11 @@ Response Requests::sendRequest(String method, String url) {
 }
 
 Response Requests::sendRequest(String method, String url, DynamicJsonDocument &requestJson) {
-    HTTPClient http;
-
     url += "?api_key=" + this->apiKey;
 
+    HTTPClient http;
     int httpCode = -1;
     String body = "";
-
     if (http.begin(*this->client, url)) {
         String requestStr;
         if (method == "POST" || method == "PATCH") {

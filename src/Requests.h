@@ -6,7 +6,6 @@
 
 #include "Arduino.h"
 #include <ArduinoJson.h>
-#include <memory>
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <WiFi.h>

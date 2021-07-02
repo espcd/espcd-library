@@ -99,8 +99,14 @@ void ESPCD::update(String firmwareId) {
     ESP.restart();
 }
 
+long randomiseInterval(int interval) {
+    return random(interval * 0.9, interval * 1.1);
+}
+
 void ESPCD::setup() {
     DEBUG_MSG("Hello from setup\n");
+
+    randomSeed(analogRead(0));
 
     AutoConnectConfig config;
     config.autoReconnect = true;
@@ -143,10 +149,12 @@ void ESPCD::loop() {
     if (WiFi.status() == WL_CONNECTED) {
         long currentMillis = millis();
 
-        if (this->previousMillis == 0 || currentMillis - this->previousMillis >= this->interval * 1000) {
-            this->previousMillis = currentMillis;
-
+        if (this->previousMillis == 0 || currentMillis - this->previousMillis >= this->randomisedInterval * 1000) {
             DEBUG_MSG("\n");
+
+            this->previousMillis = currentMillis;
+            this->randomisedInterval = randomiseInterval(this->interval);
+            DEBUG_MSG("Set randomised check interval to %d seconds\n", this->randomisedInterval);
 
             // get device from the backend or create a new one if it does not exist
             Response deviceResponse = this->getOrCreateDevice();
@@ -176,6 +184,8 @@ void ESPCD::loop() {
             if (checkInterval != this->interval) {
                 DEBUG_MSG("Set check interval to %d seconds\n", checkInterval);
                 this->interval = checkInterval;
+                this->randomisedInterval = randomiseInterval(checkInterval);
+                DEBUG_MSG("Set randomised check interval to %d seconds\n", this->randomisedInterval);
             }
             bool autoUpdate = product["auto_update"].as<bool>();
             if (!autoUpdate) {
