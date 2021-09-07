@@ -15,9 +15,11 @@ jobs:
         platform: ["esp32:esp32", "esp8266:esp8266"]
         include:
           - platform: "esp32:esp32"
+            version: "esp32:esp32@1.0.6"
             fqbn: "esp32:esp32:esp32"
             additional-urls: "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
           - platform: "esp8266:esp8266"
+            version: "esp8266:esp8266@2.7.4"
             fqbn: "esp8266:esp8266:generic"
             additional-urls: "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
 
@@ -28,7 +30,7 @@ jobs:
       - name: Install core
         run: |
           arduino-cli core update-index --additional-urls ${{ matrix.additional-urls }}
-          arduino-cli core install ${{ matrix.platform }} --additional-urls ${{ matrix.additional-urls }}
+          arduino-cli core install ${{ matrix.version }} --additional-urls ${{ matrix.additional-urls }}
       - name: Add repo to arduino libraries
         run: |
           mkdir -p ~/Arduino/libraries
