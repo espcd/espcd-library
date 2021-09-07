@@ -19,6 +19,17 @@ void Memory::setNvsValue(const char* key, String value) {
 }
 #elif defined(ARDUINO_ARCH_ESP8266)
 
+String removeUnsafeUrlCharacters(String str) {
+  String out = "";
+  for (int i = 0; i < str.length(); i++) {
+    char c = str.charAt(i);
+    if (isAlphaNumeric(c) || c == '-' || c == '.' || c == '_' || c == '~') {
+      out += c;
+    }
+  }
+  return out;
+}
+
 void Memory::readEepromConfig() {
     EEPROM.begin(sizeof(eepromConfig));
     EEPROM.get<EEPROM_CONFIG_t>(0, eepromConfig);
@@ -39,6 +50,7 @@ String Memory::getFirmwareId() {
 #elif defined(ARDUINO_ARCH_ESP8266)
     this->readEepromConfig();
     String value = String(eepromConfig.firmwareId);
+    value = removeUnsafeUrlCharacters(value);
     return value == "" ? "null" : value;
 #endif
 }
@@ -58,6 +70,7 @@ String Memory::getDeviceId() {
 #elif defined(ARDUINO_ARCH_ESP8266)
     this->readEepromConfig();
     String value = String(eepromConfig.deviceId);
+    value = removeUnsafeUrlCharacters(value);
     return value == "" ? "null" : value;
 #endif
 }
