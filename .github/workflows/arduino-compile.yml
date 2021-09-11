@@ -40,4 +40,4 @@ jobs:
           arduino-cli lib install AutoConnect
           arduino-cli lib install ArduinoJson
       - name: Compile WebServer example
-        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} ./examples/WebServer/WebServer.ino
+        run: arduino-cli compile --fqbn ${{ matrix.fqbn }} ./examples/http/http.ino
