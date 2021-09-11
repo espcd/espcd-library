@@ -41,7 +41,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  espcd.setUrl("https://test.example.com:3000/");
+  espcd.setUrl("https://api.espcd.duckdns.org/");
   espcd.setApiKey("563ba65f-d4fd-474a-9d51-7d751aa96bb5");
   espcd.setCert(cert);
   espcd.setProductId("3c6b01ec-d94a-4c23-9f25-543ff8457f39");  // if a new device needs to be created, associate this product automatically
